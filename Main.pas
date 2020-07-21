@@ -8,7 +8,7 @@ uses
   IdComponent, IdTCPConnection, IdTCPClient, IdHTTP, IdSSLOpenSSL, IdURI,
   AccountCreate, Variants, glComponentUtil, WinSvc{, FolderMon}, //Cromis.DirectoryWatch ,
   System.IOUtils, Data.DB, Uni, DBAccess, MemDS, OracleUniProvider, UniProvider,
-  ShlObj, ComObj,ShellApi, Vcl.ExtCtrls;
+  ShlObj, ComObj,ShellApi, Vcl.ExtCtrls, AnsiStrings;
 
 const
 // macro
@@ -30,7 +30,10 @@ const
   C_MACRO_DOCID         = '[DOCID]';
   C_MACRO_DOCDESCR      = '[DOCDESCR]';
 
-  C_VERSION             =  '1.1.2';
+  C_VERSION             =  '1.1.3';
+
+  // OS version array used when saving documents
+  CheckOSVersion: array[0..4] of ansistring = ('Windows 8', 'Windows 10', 'Windows Server 2012', 'Windows Server 2008 R2', 'Windows Server 2016');
 
 type
   TInsightiTrackWatcher = class(TService)
@@ -41,7 +44,6 @@ type
     qryGetDocSeq: TUniQuery;
     uniInsight: TUniConnection;
     procTemp: TUniStoredProc;
-    qrySeqnums: TUniQuery;
     qryCharts: TUniQuery;
     qryExpenseAllocations: TUniQuery;
     qryEmps: TUniQuery;
@@ -51,11 +53,45 @@ type
     qrySearchID: TUniQuery;
     qrySearchesUpdate: TUniSQL;
     tmrScan: TTimer;
+    qrySearchesAVAILABLEONLINE: TStringField;
+    qrySearchesBILLINGTYPENAME: TStringField;
+    qrySearchesCLIENTID: TStringField;
+    qrySearchesCLIENTREFERENCE: TStringField;
+    qrySearchesCLIENTREFERENCE1: TFloatField;
+    qrySearchesCOMMENTS: TStringField;
+    qrySearchesDATECOMPLETED: TDateTimeField;
+    qrySearchesDATEORDERED: TDateTimeField;
+    qrySearchesDESCRIPTION: TStringField;
+    qrySearchesDOWNLOADURL: TStringField;
+    qrySearchesEMAIL: TStringField;
+    qrySearchesFILE_NAME: TStringField;
+    qrySearchesFILEHASH: TStringField;
+    qrySearchesISBILLABLE: TStringField;
+    qrySearchesONLINEURL: TStringField;
+    qrySearchesORDEREDBY: TStringField;
+    qrySearchesORDERID: TFloatField;
+    qrySearchesPARENTORDERID: TFloatField;
+    qrySearchesREFERENCE: TStringField;
+    qrySearchesRETAILERFEE: TFloatField;
+    qrySearchesRETAILERFEEGST: TFloatField;
+    qrySearchesRETAILERFEETOTAL: TFloatField;
+    qrySearchesRETAILERREFERENCE: TStringField;
+    qrySearchesRETAILERREFERENCE_OLD: TFloatField;
+    qrySearchesSEARCH_ID: TFloatField;
+    qrySearchesSEQUENCENUMBER: TFloatField;
+    qrySearchesSERVICENAME: TStringField;
+    qrySearchesSTATUS: TStringField;
+    qrySearchesSTATUSMESSAGE: TStringField;
+    qrySearchesSUPPLIERFEE: TFloatField;
+    qrySearchesSUPPLIERFEEGST: TFloatField;
+    qrySearchesSUPPLIERFEETOTAL: TFloatField;
+    qrySearchesTOTALFEE: TFloatField;
+    qrySearchesTOTALFEEGST: TFloatField;
+    qrySearchesTOTALFEETOTAL: TFloatField;
+    qrySearchesROWID: TStringField;
     procedure ServiceStop(Sender: TService; var Stopped: Boolean);
     procedure ServiceStart(Sender: TService; var Started: Boolean);
     procedure qryMatterAttachmentNewRecord(DataSet: TDataSet);
-    procedure ServiceCreate(Sender: TObject);
-    procedure ServiceDestroy(Sender: TObject);
     procedure tmrScanTimer(Sender: TObject);
   private
     { Private declarations }
@@ -121,7 +157,6 @@ type
     function TableInteger(Table, LookupField, LookupValue, ReturnField: string): integer;
     function MatterString(iFile: integer; sField: string): string;
     function TableString(Table, LookupField, LookupValue, ReturnField: string): string;
-    function GetSeqnum(sField: string): integer;
     function GetSequenceNumber(sSequence: string): integer;
     function ValidLedger(sEntity, sLedger: string): boolean;
     procedure PostLedger(dtDate: TDateTime; cAmount: currency; cTax: Currency;
@@ -228,7 +263,8 @@ var
    bUpdateSearch: Boolean;
    liMatter,
    liSearch_ID,
-   ADBSequenceNumber: integer;
+   ADBSequenceNumber,
+   ASearch_ID: integer;
 begin
    try
       ASequenceNumber := '';
@@ -265,381 +301,401 @@ begin
             begin
                try
                   if uniInsight.Intransaction then
-                     uniInsight.commit;
+                     uniInsight.Rollback;
                   uniInsight.StartTransaction;
-                  ASequenceNumber := AOrderNode.ChildNodes['SequenceNumber'].Text;
-                  AOrderId := AOrderNode.ChildNodes['OrderId'].Text;
-                  FileHash := AOrderNode.ChildNodes['FileHash'].Text;
-                  AParentOrderId := AOrderNode.ChildNodes['ParentOrderId'].Text;
-                  AStatus := AOrderNode.ChildNodes['Status'].Text;
-                  with qryTmp do
-                  begin
-                    // bDupeSearch := False;
-                     Close;
-                     SQL.Text := 'select search_id, SequenceNumber from searches where '+
-                                 'OrderId = :OrderId and isbillable = ''true'' ';
-//                                 'and nvl(filehash, ''nofilehash'') = nvl(:filehash, ''nofilehash'') ';
-//                     if (StrToInt(AParentOrderId) = 0) or (AStatus = 'List') then
-                        ParamByName('OrderId').AsString := AOrderId;
-//                     else
-//                        ParamByName('OrderId').AsString := AParentOrderId;
-
-//                     ParamByName('FileHash').AsString := trim(FileHash);
-                     Open;
-                     bDupeSearch := (not EOF);
-                     ADBSequenceNumber := FieldByName('SequenceNumber').AsInteger;
-                     liSearch_ID := FieldByName('SEARCH_ID').AsInteger;
-                  end;
-
-{                  if (bDupeSearch = False) then
-                  begin
+                  try
+                     ASequenceNumber := AOrderNode.ChildNodes['SequenceNumber'].Text;
+                     AOrderId := AOrderNode.ChildNodes['OrderId'].Text;
+                     FileHash := AOrderNode.ChildNodes['FileHash'].Text;
+                     AParentOrderId := AOrderNode.ChildNodes['ParentOrderId'].Text;
+                     AStatus := AOrderNode.ChildNodes['Status'].Text;
                      with qryTmp do
                      begin
-                        bUpdateSearch := False;
+                       // bDupeSearch := False;
                         Close;
-                        SQL.Text := 'select 1 from searches where  '+
-                                    ' OrderId = :OrderId and isbillable = ''true'' ';
-                        ParamByName('OrderId').AsString := OrderId;
+                        SQL.Text := 'select search_id, SequenceNumber from searches where '+
+                                    'OrderId = :OrderId and isbillable = ''true'' '+
+                                    'and nvl(filehash, ''nofilehash'') = nvl(:filehash, ''nofilehash'') ';
+//                        if (StrToInt(AParentOrderId) = 0) or (AStatus = 'List') then
+                           ParamByName('OrderId').AsString := AOrderId;
+//                        else
+//                           ParamByName('OrderId').AsString := AParentOrderId;
+
+                        ParamByName('FileHash').AsString := trim(FileHash);
                         Open;
-                        bUpdateSearch := (not EOF);
+                        bDupeSearch := (not EOF);
+                        ADBSequenceNumber := FieldByName('SequenceNumber').AsInteger;
+                        liSearch_ID := FieldByName('SEARCH_ID').AsInteger;
                      end;
-                  end;   }
 
-                  if (ADBSequenceNumber = 0) or (StrToInt(ASequenceNumber) > ADBSequenceNumber) then
-                  begin
-                     if (bDupeSearch = False) {and (bUpdateSearch = False)} then
+{                     if (bDupeSearch = False) then
                      begin
-                        lsMatter := AOrderNode.ChildNodes['ClientReference'].Text;
-
-                        if (IsValidFileID(lsMatter) = True) then
-                        begin
-                           LFileID := lsMatter;
-                           liMatter := TableInteger('MATTER','FILEID',lsMatter,'NMATTER');
-                        end
-                        else
-                        begin
-                           LFileID := TableString('MATTER', 'NMATTER', lsMatter, 'FILEID');
-                           liMatter := StrToInt(lsMatter);
-                        end;
-
-                        NewDocPath := IncludeTrailingPathDelimiter(SystemString('DRAG_DEFAULT_DIRECTORY'));
-
-                        NewDocName := NewDocPath + CleanFileName(Copy(AOrderNode.ChildNodes['Description'].Text, 1, 200));
-
-//                        NewDocName := NewDocPath + CleanFileName(AOrderNode.ChildNodes['OrderId'].Text, '-');
-                        AParsedDocName := ParseMacros(NewDocName, liMatter);
-                        if (DirectoryExists(ExtractFilePath(AParsedDocName)) = False) then
-                           ForceDirectories(ExtractFilePath(AParsedDocName));
-
-                        ADownloadURL   := AOrderNode.ChildNodes['DownloadUrl'].Text;
-                        AOnlineURL     := AOrderNode.ChildNodes['OnlineUrl'].Text;
-
-                        Entity := TableString('MATTER','FILEID',LFileID,'ENTITY');
-
                         with qryTmp do
                         begin
+                           bUpdateSearch := False;
                            Close;
-                           SQL.Clear;
-                           SQL.Add('SELECT code, INFOTRACK_USER, INFOTRACK_PASSWORD from EMPLOYEE where INFOTRACK_USER = :name');
-                           AtmpRetailer := AOrderNode.ChildNodes['RetailerReference'].Text;
-                           if (Pos('BHLINSIGHT_',UPPERCASE(AOrderNode.ChildNodes['RetailerReference'].Text)) > 0) then
+                           SQL.Text := 'select 1 from searches where  '+
+                                       ' OrderId = :OrderId and isbillable = ''true'' ';
+                           ParamByName('OrderId').AsString := OrderId;
+                           Open;
+                           bUpdateSearch := (not EOF);
+                        end;
+                     end;   }
+
+                     if (ADBSequenceNumber = 0) or (StrToInt(ASequenceNumber) > ADBSequenceNumber) then
+                     begin
+                        if (bDupeSearch = False) {and (bUpdateSearch = False)} then
+                        begin
+                           lsMatter := AOrderNode.ChildNodes['ClientReference'].Text;
+
+                           if (IsValidFileID(lsMatter) = True) then
                            begin
-                              AtmpRetailer := Copy(AOrderNode.ChildNodes['RetailerReference'].Text, Pos('BHLINSIGHT_',UPPERCASE(AOrderNode.ChildNodes['RetailerReference'].Text))+11);
+                              LFileID := lsMatter;
+                              liMatter := TableInteger('MATTER','FILEID',lsMatter,'NMATTER');
                            end
                            else
+                           begin
+                              LFileID := TableString('MATTER', 'NMATTER', lsMatter, 'FILEID');
+                              liMatter := StrToInt(lsMatter);
+                           end;
+
+                           NewDocPath := IncludeTrailingPathDelimiter(SystemString('DRAG_DEFAULT_DIRECTORY'));
+
+                           NewDocName := NewDocPath + CleanFileName(Copy(AOrderNode.ChildNodes['Description'].Text, 1, 200));
+
+//                           NewDocName := NewDocPath + CleanFileName(AOrderNode.ChildNodes['OrderId'].Text, '-');
+                           AParsedDocName := ParseMacros(NewDocName, liMatter);
+                           if (DirectoryExists(ExtractFilePath(AParsedDocName)) = False) then
+                              ForceDirectories(ExtractFilePath(AParsedDocName));
+
+                           ADownloadURL   := AOrderNode.ChildNodes['DownloadUrl'].Text;
+                           AOnlineURL     := AOrderNode.ChildNodes['OnlineUrl'].Text;
+
+                           Entity := TableString('MATTER','FILEID',LFileID,'ENTITY');
+
+                           with qryTmp do
+                           begin
+                              Close;
+                              SQL.Clear;
+                              SQL.Add('SELECT code, INFOTRACK_USER, INFOTRACK_PASSWORD from EMPLOYEE where upper(INFOTRACK_USER) = upper(:name)');
                               AtmpRetailer := AOrderNode.ChildNodes['RetailerReference'].Text;
-                           WriteLog('Retailer: ' + AtmpRetailer);
-                           ParamByName('name').AsString := AtmpRetailer;
-                           //ParamByName('name').AsString := AOrderNode.ChildNodes['RetailerReference'].Text;
-                           Open;
-                           FUserID := Fields.Fields[0].AsString;
-                           InfoTrackUser := Fields.Fields[1].AsString;
-                           InfoTrackPwd  := Fields.Fields[2].AsString;
-                           Close;
-                        end;
-
-                        WriteLog('Attempting to save in Searches');
-                        with qrySearches do
-                        begin
-                           Open;
-                           Insert;
-
-                           FieldByName('AvailableOnline').AsString := AOrderNode.ChildNodes['AvailableOnline'].Text;
-                           FieldByName('ClientReference').AsString := LFileID;  //StrToInt(AOrderNode.ChildNodes['ClientReference'].Text);
-                           FieldByName('ClientReference1').AsInteger := liMatter;
-                           FieldByName('BillingTypeName').AsString := AOrderNode.ChildNodes['BillingTypeName'].Text;
-
-                           try
-                              xsDateTime := TXSDateTime.Create;
-                              xsDateTime.XSToNative(AOrderNode.ChildNodes['DateOrdered'].Text);
-
-                              FieldByName('DateOrdered').AsDateTime := xsDateTime.AsDateTime;
-
-                              if (AOrderNode.ChildNodes['DateCompleted'].Text <> '') then
+                              if (Pos('BHLINSIGHT_',UPPERCASE(AOrderNode.ChildNodes['RetailerReference'].Text)) > 0) then
                               begin
-                                 xsDateTime.XSToNative(AOrderNode.ChildNodes['DateCompleted'].Text);
-                                 FieldByName('DateCompleted').AsDateTime := xsDateTime.AsDateTime;
-                              end;
-                           finally
-                              xsDateTime := nil;
+                                 AtmpRetailer := Copy(AOrderNode.ChildNodes['RetailerReference'].Text, Pos('BHLINSIGHT_',UPPERCASE(AOrderNode.ChildNodes['RetailerReference'].Text))+11);
+                              end
+                              else
+                                 AtmpRetailer := AOrderNode.ChildNodes['RetailerReference'].Text;
+                              WriteLog('Retailer: ' + AtmpRetailer);
+                              ParamByName('name').AsString := AtmpRetailer;
+                              //ParamByName('name').AsString := AOrderNode.ChildNodes['RetailerReference'].Text;
+                              Open;
+                              FUserID := FieldByName('code').AsString;
+                              InfoTrackUser := FieldByName('INFOTRACK_USER').AsString;
+                              InfoTrackPwd  := FieldByName('INFOTRACK_PASSWORD').AsString;
+                              Close;
                            end;
 
-                           FieldByName('Description').AsString := AOrderNode.ChildNodes['Description'].Text;
-                           FieldByName('OrderId').AsString := AOrderNode.ChildNodes['OrderId'].Text;
-                           FieldByName('ParentOrderId').AsString := AOrderNode.ChildNodes['ParentOrderId'].Text;
-                           FieldByName('OrderedBy').AsString := AOrderNode.ChildNodes['OrderedBy'].Text;
-                           FieldByName('Reference').AsString := AOrderNode.ChildNodes['Reference'].Text;
-                           FieldByName('RetailerReference').AsString := AOrderNode.ChildNodes['RetailerReference'].Text;
-                           FieldByName('RetailerFee').AsString := AOrderNode.ChildNodes['RetailerFee'].Text;
-                           FieldByName('RetailerFeeGST').AsString := AOrderNode.ChildNodes['RetailerFeeGST'].Text;
-                           FieldByName('RetailerFeeTotal').AsString := AOrderNode.ChildNodes['RetailerFeeTotal'].Text;
-                           FieldByName('SupplierFee').AsString := AOrderNode.ChildNodes['SupplierFee'].Text;
-                           FieldByName('SupplierFeeGST').AsString := AOrderNode.ChildNodes['SupplierFeeGST'].Text;
-                           FieldByName('SupplierFeeTotal').AsString := AOrderNode.ChildNodes['SupplierFeeTotal'].Text;
-                           FieldByName('TotalFee').AsString := AOrderNode.ChildNodes['TotalFee'].Text;
-                           FieldByName('TotalFeeGST').AsString := AOrderNode.ChildNodes['TotalFeeGST'].Text;
-                           FieldByName('TotalFeeTotal').AsString := AOrderNode.ChildNodes['TotalFeeTotal'].Text;
-                           FieldByName('ServiceName').AsString := AOrderNode.ChildNodes['ServiceName'].Text;
-                           FieldByName('Status').AsString := AOrderNode.ChildNodes['Status'].Text;
-                           FieldByName('StatusMessage').AsString := AOrderNode.ChildNodes['StatusMessage'].Text;
-                           FieldByName('FILE_NAME').AsString := AFileName;
-                           FieldByName('DownloadUrl').Clear;
-                           if (ADownloadURL <> '') then
+                           WriteLog('Attempting to save in Searches');
+                           with qrySearches do
                            begin
-                              FieldByName('DownloadUrl').AsString := ExpandUNCFileName(AParsedDocName)+'.pdf';  //IndexPath(AParsedDocName, 'DOC_SHARE_PATH') +'.pdf';   //AOrderNode.ChildNodes['DownloadUrl'].Text;
-                               WriteLog(IndexPath(AParsedDocName, 'DOC_SHARE_PATH') +'.pdf');
-                           end;  // 16 Sep 2018 DW to handle in memory issue
-                           FieldByName('OnlineUrl').Clear;
-                           if (AOnlineURL <> '') then
-                              FieldByName('OnlineUrl').AsString := AOrderNode.ChildNodes['OnlineUrl'].Text; // 16 Sep 2018 DW to handle in memory issue
+                              Open;
+                              Insert;
 
-                           FieldByName('IsBillable').AsString := AOrderNode.ChildNodes['IsBillable'].Text;
-                           FieldByName('FileHash').AsString := AOrderNode.ChildNodes['FileHash'].Text;
-                           FieldByName('Email').AsString := AOrderNode.ChildNodes['Email'].Text;
-                           FieldByName('ClientId').AsString := AOrderNode.ChildNodes['ClientId'].Text;
-                           FieldByName('SequenceNumber').AsString := AOrderNode.ChildNodes['SequenceNumber'].Text;
-                           Post;
-                           WriteLog('Saved in Searches');
-                        end;
+                              FieldByName('AvailableOnline').AsString := AOrderNode.ChildNodes['AvailableOnline'].Text;
+                              FieldByName('ClientReference').AsString := LFileID;  //StrToInt(AOrderNode.ChildNodes['ClientReference'].Text);
+                              FieldByName('ClientReference1').AsInteger := liMatter;
+                              FieldByName('BillingTypeName').AsString := AOrderNode.ChildNodes['BillingTypeName'].Text;
 
-                        if (AOrderNode.ChildNodes['IsBillable'].Text = 'true') then
-                        begin
-                           //AES 10/10/17 download if download url exists
-                           if ((ADownloadURL <> '') {or (AOnlineURL <> '')}) then
-                           begin
-                              WriteLog('Getting Login details');
-                              if (InfoTrackUser = '') then
-                                 InfoTrackUser := SystemString('INFOTRACK_USER');
-                              if (InfoTrackPwd = '') then
-                                 InfoTrackPwd := SystemString('INFOTRACK_PASSWORD');
-                              WriteLog('About to start download-1');
-                              // if download URL exists download file.
-                              if (ADownloadURL <> '') then
-                              begin
-                                 if (InfoTrackLogin(ADownloadURL, AParsedDocName, InfoTrackUser, InfoTrackPwd, liMatter ) = True) then
-                                 begin
-                                    WriteLog('About to save document-1 '+AParsedDocName);
-                                    SaveDocument(now, LFileID, UserID, AParsedDocName+'.pdf','InfoTrack Search',
-                                              'InfoTrack Search - ' + copy(qrySearches.FieldByName('Description').AsString, 1,180));
-                                    WriteLog('Document-1 '+AParsedDocName+' saved.');
-                                 end;
-                              end;
-                           end;
-                           // AES 10/10/17  only create invoice if amount > 0
-                           if (qrySearches.FieldByName('TotalFee').AsCurrency <> 0) then
-                           begin
-                              // create invoice
                               try
-                                 WriteLog('Creating Transitems and allocs');
-                                 if not Assigned(dmAccountCreate) then
-                                    Application.CreateForm(TdmAccountCreate, dmAccountCreate);
-                                 dmAccountCreate.SaveAccount(liMatter,
-                                                          SystemInteger('INFOTRACK_NCREDITOR'),
-                                                          qrySearches.FieldByName('OrderID').AsString,
-                                                          qrySearches.FieldByName('TotalFee').AsFloat,
-                                                          qrySearches.FieldByName('TotalFeeGST').AsFloat,
-                                                          qrySearches.FieldByName('RetailerFee').AsFloat,
-                                                          qrySearches.FieldByName('RetailerFeeGST').AsFloat,
-                                                          qrySearches.FieldByName('SupplierFee').AsFloat,
-                                                          qrySearches.FieldByName('SupplierFeeGST').AsFloat,
-                                                          qrySearches.FieldByName('Description').AsString,
-                                                          qrySearches.FieldByName('ClientReference').AsString,
-                                                          qrySearches.FieldByName('DateOrdered').AsDateTime);
+                                 xsDateTime := TXSDateTime.Create;
+                                 xsDateTime.XSToNative(AOrderNode.ChildNodes['DateOrdered'].Text);
+
+                                 FieldByName('DateOrdered').AsDateTime := xsDateTime.AsDateTime;
+
+                                 if (AOrderNode.ChildNodes['DateCompleted'].Text <> '') then
+                                 begin
+                                    xsDateTime.XSToNative(AOrderNode.ChildNodes['DateCompleted'].Text);
+                                    FieldByName('DateCompleted').AsDateTime := xsDateTime.AsDateTime;
+                                 end;
                               finally
-                                 FreeAndNil(dmAccountCreate);
+                                 xsDateTime := nil;
                               end;
-                           end;
-                        end;
-                     end
-                     else
-                     if {(bUpdateSearch = True) and} (bDupeSearch = True) then
-                     begin
-                        lsMatter := AOrderNode.ChildNodes['ClientReference'].Text;
 
-                        if IsValidFileID(lsMatter) then
-                        begin
-                           LFileID := lsMatter;
-                           liMatter := TableInteger('MATTER','FILEID',lsMatter,'NMATTER');
-                        end
-                        else
-                        begin
-                           LFileID := TableString('MATTER', 'NMATTER', lsMatter, 'FILEID');
-                           liMatter := StrToInt(lsMatter);
-                        end;
-
-                        NewDocPath := IncludeTrailingPathDelimiter(SystemString('DRAG_DEFAULT_DIRECTORY'));
-                        NewDocName := NewDocPath + CleanFileName(AOrderNode.ChildNodes['OrderId'].Text, '-');
-                        AParsedDocName := ParseMacros(NewDocName, liMatter);
-                        if (DirectoryExists(ExtractFilePath(AParsedDocName)) = False) then
-                           ForceDirectories(ExtractFilePath(AParsedDocName));
-
-                        ADownloadURL   := AOrderNode.ChildNodes['DownloadUrl'].Text;
-                        AOnlineURL     := AOrderNode.ChildNodes['OnlineUrl'].Text;
-
-                        Entity := TableString('MATTER','FILEID',LFileID,'ENTITY');
-
-                        with qryTmp do
-                        begin
-                           Close;
-                           SQL.Clear;
-                           SQL.Add('SELECT code, INFOTRACK_USER, INFOTRACK_PASSWORD from EMPLOYEE where INFOTRACK_USER = :name');
-                           ParamByName('name').AsString := AOrderNode.ChildNodes['RetailerReference'].Text;
-                           Open;
-                           FUserID := Fields.Fields[0].AsString;
-                           InfoTrackUser := Fields.Fields[1].AsString;
-                           InfoTrackPwd  := Fields.Fields[2].AsString;
-                           Close;
-                        end;
-
-                        with qrySearchesUpdate do
-                        begin
-                           ParamByName('AvailableOnline').AsString := AOrderNode.ChildNodes['AvailableOnline'].Text;
-                           ParamByName('ClientReference').AsString := LFileID;  //StrToInt(AOrderNode.ChildNodes['ClientReference'].Text);
-                           ParamByName('BillingTypeName').AsString := AOrderNode.ChildNodes['BillingTypeName'].Text;
-
-                           try
-                              xsDateTime := TXSDateTime.Create;
-                              xsDateTime.XSToNative(AOrderNode.ChildNodes['DateOrdered'].Text);
-
-                              ParamByName('DateOrdered').AsDateTime := xsDateTime.AsDateTime;
-
-                              if (AOrderNode.ChildNodes['DateCompleted'].Text <> '') then
-                              begin
-                                 xsDateTime.XSToNative(AOrderNode.ChildNodes['DateCompleted'].Text);
-                                 ParamByName('DateCompleted').AsDateTime := xsDateTime.AsDateTime;
-                              end;
-                           finally
-                              xsDateTime := nil;
-                           end;
-
-                           ParamByName('Search_Id').AsInteger := liSearch_ID;
-                           ParamByName('Description').AsString := AOrderNode.ChildNodes['Description'].Text;
-//                           ParamByName('OrderId').AsString := AOrderNode.ChildNodes['OrderId'].Text;
-//                           ParamByName('ParentOrderId').AsString := AOrderNode.ChildNodes['ParentOrderId'].Text;
-                           ParamByName('OrderedBy').AsString := AOrderNode.ChildNodes['OrderedBy'].Text;
-                           ParamByName('Reference').AsString := AOrderNode.ChildNodes['Reference'].Text;
-                           ParamByName('RetailerReference').AsString := AOrderNode.ChildNodes['RetailerReference'].Text;
-
-                           if (AOrderNode.ChildNodes['TotalFeeTotal'].Text <> '0.00') then
-                           begin
-                              ParamByName('RetailerFee').AsString := AOrderNode.ChildNodes['RetailerFee'].Text;
-                              ParamByName('RetailerFeeGST').AsString := AOrderNode.ChildNodes['RetailerFeeGST'].Text;
-                              ParamByName('RetailerFeeTotal').AsString := AOrderNode.ChildNodes['RetailerFeeTotal'].Text;
-                              ParamByName('SupplierFee').AsString := AOrderNode.ChildNodes['SupplierFee'].Text;
-                              ParamByName('SupplierFeeGST').AsString := AOrderNode.ChildNodes['SupplierFeeGST'].Text;
-                              ParamByName('SupplierFeeTotal').AsString := AOrderNode.ChildNodes['SupplierFeeTotal'].Text;
-                              ParamByName('TotalFee').AsString := AOrderNode.ChildNodes['TotalFee'].Text;
-                              ParamByName('TotalFeeGST').AsString := AOrderNode.ChildNodes['TotalFeeGST'].Text;
-                              ParamByName('TotalFeeTotal').AsString := AOrderNode.ChildNodes['TotalFeeTotal'].Text;
-                           end;
-
-                           ParamByName('ServiceName').AsString := AOrderNode.ChildNodes['ServiceName'].Text;
-                           ParamByName('Status').AsString := AOrderNode.ChildNodes['Status'].Text;
-                           ParamByName('StatusMessage').AsString := AOrderNode.ChildNodes['StatusMessage'].Text;
-                            ParamByName('DownloadUrl').Clear;
-                           if (ADownloadURL <> '') then
-                           begin
-                              ParamByName('DownloadUrl').AsString := ExpandUNCFileName(AParsedDocName)+'.pdf';  //IndexPath(AParsedDocName, 'DOC_SHARE_PATH') +'.pdf';   //AOrderNode.ChildNodes['DownloadUrl'].Text;
-                              WriteLog(IndexPath(AParsedDocName, 'DOC_SHARE_PATH') +'.pdf');
-                           end; // 16 Sep 2018 DW to handle in memory issue
-                           ParamByName('OnlineUrl').Clear;
-                           if (AOnlineURL <> '') then
-                              ParamByName('OnlineUrl').AsString := AOrderNode.ChildNodes['OnlineUrl'].Text; // 16 Sep 2018 DW to handle in memory issue
-
-                           ParamByName('IsBillable').AsString := AOrderNode.ChildNodes['IsBillable'].Text;
-                           ParamByName('FileHash').AsString := AOrderNode.ChildNodes['FileHash'].Text;
-                           ParamByName('Email').AsString := AOrderNode.ChildNodes['Email'].Text;
-                           ParamByName('ClientId').AsString := AOrderNode.ChildNodes['ClientId'].Text;
-                           ParamByName('SequenceNumber').AsString := AOrderNode.ChildNodes['SequenceNumber'].Text;
-                           Prepare;
-                           Execute;
-                        end;
-
-                        if (AOrderNode.ChildNodes['IsBillable'].Text = 'true') then
-                        begin
-                           if ((ADownloadURL <> '') or (AOnlineURL <> '')) then
-                           begin
-                              qrySearchID.Close;
-                              qrySearchID.ParamByName('search_id').AsInteger := liSearch_ID;
-                              qrySearchID.Open;
-                              if (InfoTrackUser = '') then
-                                 InfoTrackUser := SystemString('INFOTRACK_USER');
-                              if (InfoTrackPwd = '') then
-                                 InfoTrackPwd := SystemString('INFOTRACK_PASSWORD');
-
+                              FieldByName('Description').AsString := AOrderNode.ChildNodes['Description'].Text;
+                              FieldByName('OrderId').AsString := AOrderNode.ChildNodes['OrderId'].Text;
+                              FieldByName('ParentOrderId').AsString := AOrderNode.ChildNodes['ParentOrderId'].Text;
+                              FieldByName('OrderedBy').AsString := AOrderNode.ChildNodes['OrderedBy'].Text;
+                              FieldByName('Reference').AsString := AOrderNode.ChildNodes['Reference'].Text;
+                              FieldByName('RetailerReference').AsString := AOrderNode.ChildNodes['RetailerReference'].Text;
+                              FieldByName('RetailerFee').AsString := AOrderNode.ChildNodes['RetailerFee'].Text;
+                              FieldByName('RetailerFeeGST').AsString := AOrderNode.ChildNodes['RetailerFeeGST'].Text;
+                              FieldByName('RetailerFeeTotal').AsString := AOrderNode.ChildNodes['RetailerFeeTotal'].Text;
+                              FieldByName('SupplierFee').AsString := AOrderNode.ChildNodes['SupplierFee'].Text;
+                              FieldByName('SupplierFeeGST').AsString := AOrderNode.ChildNodes['SupplierFeeGST'].Text;
+                              FieldByName('SupplierFeeTotal').AsString := AOrderNode.ChildNodes['SupplierFeeTotal'].Text;
+                              FieldByName('TotalFee').AsString := AOrderNode.ChildNodes['TotalFee'].Text;
+                              FieldByName('TotalFeeGST').AsString := AOrderNode.ChildNodes['TotalFeeGST'].Text;
+                              FieldByName('TotalFeeTotal').AsString := AOrderNode.ChildNodes['TotalFeeTotal'].Text;
+                              FieldByName('ServiceName').AsString := AOrderNode.ChildNodes['ServiceName'].Text;
+                              FieldByName('Status').AsString := AOrderNode.ChildNodes['Status'].Text;
+                              FieldByName('StatusMessage').AsString := AOrderNode.ChildNodes['StatusMessage'].Text;
+                              FieldByName('FILE_NAME').AsString := AFileName;
+                              FieldByName('DownloadUrl').Clear;
                               if (ADownloadURL <> '') then
                               begin
-                                 if (InfoTrackLogin(ADownloadURL, AParsedDocName, InfoTrackUser, InfoTrackPwd, liMatter ) = True) then
-                                 begin
-                                    WriteLog('About to save document-2');
-                                    SaveDocument(now, LFileID, UserID, AParsedDocName+'.pdf','InfoTrack Search',
-                                              'InfoTrack Search - ' + copy(AOrderNode.ChildNodes['Description'].Text, 1,180));
-                                 end;
-                              end;
-                              if qrySearchID.Active then
-                                 qrySearchID.Close;
+                                 FieldByName('DownloadUrl').AsString := ExpandUNCFileName(AParsedDocName)+'.pdf';  //IndexPath(AParsedDocName, 'DOC_SHARE_PATH') +'.pdf';   //AOrderNode.ChildNodes['DownloadUrl'].Text;
+                                 WriteLog(IndexPath(AParsedDocName, 'DOC_SHARE_PATH') +'.pdf');
+                              end;  // 16 Sep 2018 DW to handle in memory issue
+                              FieldByName('OnlineUrl').Clear;
+                              if (AOnlineURL <> '') then
+                                 FieldByName('OnlineUrl').AsString := AOrderNode.ChildNodes['OnlineUrl'].Text; // 16 Sep 2018 DW to handle in memory issue
+
+                              FieldByName('IsBillable').AsString := AOrderNode.ChildNodes['IsBillable'].Text;
+                              FieldByName('FileHash').AsString := AOrderNode.ChildNodes['FileHash'].Text;
+                              FieldByName('Email').AsString := AOrderNode.ChildNodes['Email'].Text;
+                              FieldByName('ClientId').AsString := AOrderNode.ChildNodes['ClientId'].Text;
+                              FieldByName('SequenceNumber').AsString := AOrderNode.ChildNodes['SequenceNumber'].Text;
+//                              Post;
+                              ApplyUpdates;
+                              WriteLog('Saved in Searches table '+ FieldByName('search_id').AsString);
+                              ASearch_ID := FieldByName('search_id').AsInteger;
+                              Close;
                            end;
 
-                           if (StrToCurr(AOrderNode.ChildNodes['TotalFee'].Text) <> 0) then
+                           qrySearchID.Close;
+                           qrySearchID.ParamByName('search_id').AsInteger := ASearch_ID;
+                           qrySearchID.Open;
+                           if (AOrderNode.ChildNodes['IsBillable'].Text = 'true') then
                            begin
-                           // create invoice
-                              try
-                                 if not Assigned(dmAccountCreate) then
-                                    Application.CreateForm(TdmAccountCreate, dmAccountCreate);
+                              //AES 10/10/17 download if download url exists
+                              if ((length(ADownloadURL) > 0) ) then
+                              begin
+                                 try
+                                    WriteLog('Getting Login details');
+                                    if (length(InfoTrackUser) = 0) then
+                                       InfoTrackUser := SystemString('INFOTRACK_USER');
+                                    if (length(InfoTrackPwd) = 0) then
+                                       InfoTrackPwd := SystemString('INFOTRACK_PASSWORD');
+                                    WriteLog('About to start download-1');
+                                    // if download URL exists download file.
+                                    if (length(ADownloadURL) > 0) then
+                                    begin
+                                       WriteLog('Before InfoTrackLogin - AParsedDocName: ' + AParsedDocName);
+                                       if (InfoTrackLogin(ADownloadURL, AParsedDocName, InfoTrackUser, InfoTrackPwd, liMatter ) = True) then
+                                       begin
+                                          WriteLog('About to save document-2 '+AParsedDocName);
+                                          SaveDocument(now, LFileID, UserID, AParsedDocName+'.pdf','InfoTrack Search',
+                                                       'InfoTrack Search - ' + copy(qrySearchID.FieldByName('Description').AsString, 1,180));
+                                          WriteLog('Document-3 '+AParsedDocName+' saved.');
+                                       end
+                                       else
+                                          WriteLog('Document '+AParsedDocName+' not saved.');
+                                    end;
+                                 finally
 
+                                 end;
+                              end;
+
+                              // AES 10/10/17  only create invoice if amount > 0
+                              if (qrySearchID.FieldByName('TotalFeeTotal').AsFloat <> 0) then
+                              begin
+                                 // create invoice
+                                 try
+                                    WriteLog('Creating Transitems and allocs');
+                                    if not Assigned(dmAccountCreate) then
+                                       Application.CreateForm(TdmAccountCreate, dmAccountCreate);
+                                    dmAccountCreate.SaveAccount(liMatter,
+                                                             SystemInteger('INFOTRACK_NCREDITOR'),
+                                                             qrySearchID.FieldByName('OrderID').AsString,
+                                                             qrySearchID.FieldByName('TotalFee').AsFloat,
+                                                             qrySearchID.FieldByName('TotalFeeGST').AsFloat,
+                                                             qrySearchID.FieldByName('RetailerFee').AsFloat,
+                                                             qrySearchID.FieldByName('RetailerFeeGST').AsFloat,
+                                                             qrySearchID.FieldByName('SupplierFee').AsFloat,
+                                                             qrySearchID.FieldByName('SupplierFeeGST').AsFloat,
+                                                             qrySearchID.FieldByName('Description').AsString,
+                                                             qrySearchID.FieldByName('ClientReference').AsString,
+                                                             qrySearchID.FieldByName('DateOrdered').AsDateTime);
+                                 finally
+                                    FreeAndNil(dmAccountCreate);
+                                    qrySearchID.Close;
+                                 end;
+                              end;
+                           end;
+                        end
+                        else // duplicate so do update
+                        if {(bUpdateSearch = True) and} (bDupeSearch = True) then
+                        begin
+                           lsMatter := AOrderNode.ChildNodes['ClientReference'].Text;
+
+                           if IsValidFileID(lsMatter) then
+                           begin
+                              LFileID := lsMatter;
+                              liMatter := TableInteger('MATTER','FILEID',lsMatter,'NMATTER');
+                           end
+                           else
+                           begin
+                              LFileID := TableString('MATTER', 'NMATTER', lsMatter, 'FILEID');
+                              liMatter := StrToInt(lsMatter);
+                           end;
+
+                           NewDocPath := IncludeTrailingPathDelimiter(SystemString('DRAG_DEFAULT_DIRECTORY'));
+                           NewDocName := NewDocPath + CleanFileName(AOrderNode.ChildNodes['OrderId'].Text, '-');
+                           AParsedDocName := ParseMacros(NewDocName, liMatter);
+                           if (DirectoryExists(ExtractFilePath(AParsedDocName)) = False) then
+                              ForceDirectories(ExtractFilePath(AParsedDocName));
+
+                           ADownloadURL   := AOrderNode.ChildNodes['DownloadUrl'].Text;
+                           AOnlineURL     := AOrderNode.ChildNodes['OnlineUrl'].Text;
+
+                           Entity := TableString('MATTER','FILEID',LFileID,'ENTITY');
+
+                           with qryTmp do
+                           begin
+                              Close;
+                              SQL.Clear;
+                              SQL.Add('SELECT code, INFOTRACK_USER, INFOTRACK_PASSWORD from EMPLOYEE where INFOTRACK_USER = :name');
+                              ParamByName('name').AsString := AOrderNode.ChildNodes['RetailerReference'].Text;
+                              Open;
+                              FUserID := Fields.Fields[0].AsString;
+                              InfoTrackUser := Fields.Fields[1].AsString;
+                              InfoTrackPwd  := Fields.Fields[2].AsString;
+                              Close;
+                           end;
+
+                           with qrySearchesUpdate do
+                           begin
+                              ParamByName('AvailableOnline').AsString := AOrderNode.ChildNodes['AvailableOnline'].Text;
+                              ParamByName('ClientReference').AsString := LFileID;  //StrToInt(AOrderNode.ChildNodes['ClientReference'].Text);
+                              ParamByName('BillingTypeName').AsString := AOrderNode.ChildNodes['BillingTypeName'].Text;
+
+                              try
+                                 xsDateTime := TXSDateTime.Create;
+                                 xsDateTime.XSToNative(AOrderNode.ChildNodes['DateOrdered'].Text);
+
+                                 ParamByName('DateOrdered').AsDateTime := xsDateTime.AsDateTime;
+
+                                 if (AOrderNode.ChildNodes['DateCompleted'].Text <> '') then
+                                 begin
+                                    xsDateTime.XSToNative(AOrderNode.ChildNodes['DateCompleted'].Text);
+                                    ParamByName('DateCompleted').AsDateTime := xsDateTime.AsDateTime;
+                                 end;
+                              finally
+                                 xsDateTime := nil;
+                              end;
+
+                              ParamByName('Search_Id').AsInteger := liSearch_ID;
+                              ParamByName('Description').AsString := AOrderNode.ChildNodes['Description'].Text;
+//                              ParamByName('OrderId').AsString := AOrderNode.ChildNodes['OrderId'].Text;
+//                              ParamByName('ParentOrderId').AsString := AOrderNode.ChildNodes['ParentOrderId'].Text;
+                              ParamByName('OrderedBy').AsString := AOrderNode.ChildNodes['OrderedBy'].Text;
+                              ParamByName('Reference').AsString := AOrderNode.ChildNodes['Reference'].Text;
+                              ParamByName('RetailerReference').AsString := AOrderNode.ChildNodes['RetailerReference'].Text;
+
+                              if (AOrderNode.ChildNodes['TotalFeeTotal'].Text <> '0.00') then
+                              begin
+                                 ParamByName('RetailerFee').AsString := AOrderNode.ChildNodes['RetailerFee'].Text;
+                                 ParamByName('RetailerFeeGST').AsString := AOrderNode.ChildNodes['RetailerFeeGST'].Text;
+                                 ParamByName('RetailerFeeTotal').AsString := AOrderNode.ChildNodes['RetailerFeeTotal'].Text;
+                                 ParamByName('SupplierFee').AsString := AOrderNode.ChildNodes['SupplierFee'].Text;
+                                 ParamByName('SupplierFeeGST').AsString := AOrderNode.ChildNodes['SupplierFeeGST'].Text;
+                                 ParamByName('SupplierFeeTotal').AsString := AOrderNode.ChildNodes['SupplierFeeTotal'].Text;
+                                 ParamByName('TotalFee').AsString := AOrderNode.ChildNodes['TotalFee'].Text;
+                                 ParamByName('TotalFeeGST').AsString := AOrderNode.ChildNodes['TotalFeeGST'].Text;
+                                 ParamByName('TotalFeeTotal').AsString := AOrderNode.ChildNodes['TotalFeeTotal'].Text;
+                              end;
+
+                              ParamByName('ServiceName').AsString := AOrderNode.ChildNodes['ServiceName'].Text;
+                              ParamByName('Status').AsString := AOrderNode.ChildNodes['Status'].Text;
+                              ParamByName('StatusMessage').AsString := AOrderNode.ChildNodes['StatusMessage'].Text;
+                              ParamByName('DownloadUrl').Clear;
+                              if (ADownloadURL <> '') then
+                              begin
+                                 ParamByName('DownloadUrl').AsString := ExpandUNCFileName(AParsedDocName)+'.pdf';  //IndexPath(AParsedDocName, 'DOC_SHARE_PATH') +'.pdf';   //AOrderNode.ChildNodes['DownloadUrl'].Text;
+                                 WriteLog(IndexPath(AParsedDocName, 'DOC_SHARE_PATH') +'.pdf');
+                              end; // 16 Sep 2018 DW to handle in memory issue
+                              ParamByName('OnlineUrl').Clear;
+                              if (AOnlineURL <> '') then
+                                 ParamByName('OnlineUrl').AsString := AOrderNode.ChildNodes['OnlineUrl'].Text; // 16 Sep 2018 DW to handle in memory issue
+
+                              ParamByName('IsBillable').AsString := AOrderNode.ChildNodes['IsBillable'].Text;
+                              ParamByName('FileHash').AsString := AOrderNode.ChildNodes['FileHash'].Text;
+                              ParamByName('Email').AsString := AOrderNode.ChildNodes['Email'].Text;
+                              ParamByName('ClientId').AsString := AOrderNode.ChildNodes['ClientId'].Text;
+                              ParamByName('SequenceNumber').AsString := AOrderNode.ChildNodes['SequenceNumber'].Text;
+                              Prepare;
+                              Execute;
+                           end;
+
+                           if (AOrderNode.ChildNodes['IsBillable'].Text = 'true') then
+                           begin
+                              if ((ADownloadURL <> '') or (AOnlineURL <> '')) then
+                              begin
                                  qrySearchID.Close;
                                  qrySearchID.ParamByName('search_id').AsInteger := liSearch_ID;
                                  qrySearchID.Open;
+                                 if (InfoTrackUser = '') then
+                                    InfoTrackUser := SystemString('INFOTRACK_USER');
+                                 if (InfoTrackPwd = '') then
+                                    InfoTrackPwd := SystemString('INFOTRACK_PASSWORD');
 
-                                 WriteLog('Creating Transitems and allocs');
-
-                                 dmAccountCreate.SaveAccount(TableInteger('MATTER','FILEID', LFileID, 'NMATTER'),
-                                                          SystemInteger('INFOTRACK_NCREDITOR'),
-                                                          qrySearchID.FieldByName('OrderID').AsString,
-                                                          qrySearches.FieldByName('TotalFee').AsCurrency,
-                                                          qrySearches.FieldByName('TotalFeeGST').AsCurrency,
-                                                          qrySearches.FieldByName('RetailerFee').AsCurrency,
-                                                          qrySearches.FieldByName('RetailerFeeGST').AsCurrency,
-                                                          qrySearches.FieldByName('SupplierFee').AsCurrency,
-                                                          qrySearches.FieldByName('SupplierFeeGST').AsCurrency,
-                                                          qrySearchID.FieldByName('Description').AsString,
-                                                          qrySearchID.FieldByName('ClientReference').AsString,
-                                                          qrySearchID.FieldByName('DateOrdered').AsDateTime);
-                              finally
-                                 FreeAndNil(dmAccountCreate);
+                                 if (ADownloadURL <> '') then
+                                 begin
+                                    WriteLog('Before InfoTrackLogin - AParsedDocName: ' + AParsedDocName);
+                                    if (InfoTrackLogin(ADownloadURL, AParsedDocName, InfoTrackUser, InfoTrackPwd, liMatter ) = True) then
+                                    begin
+                                       WriteLog('About to save document-2');
+                                       SaveDocument(now, LFileID, UserID, AParsedDocName+'.pdf','InfoTrack Search',
+                                                 'InfoTrack Search - ' + copy(AOrderNode.ChildNodes['Description'].Text, 1,180));
+                                    end;
+                                 end;
+                                 if qrySearchID.Active then
+                                    qrySearchID.Close;
                               end;
-                              if qrySearchID.Active then
-                                 qrySearchID.Close;
+
+                              if (StrToFloat(AOrderNode.ChildNodes['TotalFeeTotal'].Text) <> 0) then
+                              begin
+                              // create invoice
+                                 try
+                                    if not Assigned(dmAccountCreate) then
+                                       Application.CreateForm(TdmAccountCreate, dmAccountCreate);
+
+                                    qrySearchID.Close;
+                                    qrySearchID.ParamByName('search_id').AsInteger := liSearch_ID;
+                                    qrySearchID.Open;
+
+                                    WriteLog('Creating Transitems and allocs');
+
+                                    dmAccountCreate.SaveAccount(TableInteger('MATTER','FILEID', LFileID, 'NMATTER'),
+                                                             SystemInteger('INFOTRACK_NCREDITOR'),
+                                                             qrySearchID.FieldByName('OrderID').AsString,
+                                                             qrySearches.FieldByName('TotalFee').AsFloat,
+                                                             qrySearches.FieldByName('TotalFeeGST').AsFloat,
+                                                             qrySearches.FieldByName('RetailerFee').AsFloat,
+                                                             qrySearches.FieldByName('RetailerFeeGST').AsFloat,
+                                                             qrySearches.FieldByName('SupplierFee').AsFloat,
+                                                             qrySearches.FieldByName('SupplierFeeGST').AsFloat,
+                                                             qrySearchID.FieldByName('Description').AsString,
+                                                             qrySearchID.FieldByName('ClientReference').AsString,
+                                                             qrySearchID.FieldByName('DateOrdered').AsDateTime);
+                                 finally
+                                    FreeAndNil(dmAccountCreate);
+                                 end;
+                                 if qrySearchID.Active then
+                                    qrySearchID.Close;
+                              end;
                            end;
                         end;
+//                        if uniInsight.intransaction then
+//                           UniInsight.Commit;
                      end;
-                     if uniInsight.intransaction then
-                        UniInsight.Commit;
-                  end
-                  else
-                  begin
-                     if uniInsight.intransaction then
-                        uniInsight.Commit;
+//                  else
+//                  begin
+//                     if uniInsight.intransaction then
+//                        uniInsight.Commit;
+//                  end;
+                  finally
+                      UniInsight.Commit;
                   end;
                except
                   if uniInsight.intransaction then
@@ -656,21 +712,6 @@ begin
 end;
 
 
-procedure TInsightiTrackWatcher.ServiceCreate(Sender: TObject);
-begin
-{   FFolderMon := TFolderMon.Create;
-   FFolderMon.OnFolderChange := HandleFolderChange; }
-
-   //FDirectoryWatch := TDirectoryWatch.Create;
-   //FDirectoryWatch.OnNotify := OnNotify;
-end;
-
-procedure TInsightiTrackWatcher.ServiceDestroy(Sender: TObject);
-begin
-//   FFolderMon.Free;
-   //FreeAndNil(FDirectoryWatch);
-end;
-
 procedure TInsightiTrackWatcher.ServiceStart(Sender: TService;
   var Started: Boolean);
 begin
@@ -685,44 +726,18 @@ begin
       if (SystemString('INFOTRACK_URL') <> '') then
       begin
          InfotrackFolder := IncludeTrailingPathDelimiter(SystemString('INFOTRACK_STAGING_FLDR'));
-         //FDirectoryWatch.Directory := SystemString('INFOTRACK_STAGING_FLDR');
-         //FDirectoryWatch.WatchOptions := [woFileName];
-         //FDirectoryWatch.WatchSubTree := False;
-         //FDirectoryWatch.Start;
       end;
       if (UniInsight.Connected = False) then
            WriteLog('Could not connect to Oracle server' + FServer);
    except
       WriteLog('Could not connect to Oracle server' + FServer);
-
-
-
-{      if (SystemString('INFOTRACK_URL') <> '') then
-      begin
-         FFolderMon.Folder := SystemString('INFOTRACK_STAGING_FLDR');
-         vMonitoredChanges := [];
-         Include(vMonitoredChanges, ctFileName);
-
-         FFolderMon.MonitoredChanges := vMonitoredChanges;
-         FFolderMon.MonitorSubFolders := False;
-         FFolderMon.Activate;
-      end;   }
    end;
-
-{   fDebugfile := IncludeTrailingPathDelimiter(ExtractFilePath(GetServiceExecutablePath('','InsightiTrackWatcher'))) +  'itrackLogs\debug.txt';
-   if not FileExists(fDebugfile) then
-      FileHandle  := FileCreate(fDebugfile);
-   FileClose(FileHandle); }
 end;
 
 procedure TInsightiTrackWatcher.ServiceStop(Sender: TService;
   var Stopped: Boolean);
 begin
    UniInsight.Disconnect;
-   //if (FDirectoryWatch.Running = True) then
-   //  FDirectoryWatch.Stop;
-{   if FFolderMon.IsActive then
-      FFolderMon.Deactivate;}
    FreeAndNil(FDataModule);
 end;
 
@@ -761,55 +776,69 @@ begin
             AParsedDocName := ParseMacros(NewDocName, ANMatter);
 
             WriteLog('About to start download of ' +IndexedFullTargetFileName );
-            If FileExists(AParsedDocName) = False then
+            If FileExists(AParsedDocName) = True then
+               DeleteFile(AParsedDocName)
+            else
             begin
-               CreateDir(ExtractFileDir(AParsedDocName));
-               FileHandle := NativeInt(FileCreate(AParsedDocName));
-               if (FileHandle = -1) then
+               if (System.SysUtils.ForceDirectories(ExtractFileDir(AParsedDocName)) = true) then
                begin
-                  bFileError := True;
-               end;
-               FileClose(FileHandle);
-
-               if bFileError = False then
-               begin
-                  IdHTTP.AllowCookies := True;
-                  IdHTTP.HandleRedirects := True;
-
-                  IdHTTP.Request.Username := User;
-                  IdHTTP.Request.Password := Pass;
-                  IdHTTP.Request.BasicAuthentication := False;
-                  IdHTTP.HTTPOptions := [hoInProcessAuth];
-
-                  IdHTTP.Request.ContentType := 'application/x-www-form-urlencoded';
-                  IdHTTP.Request.Connection := 'keep-alive';
-                  // Download file
-                  try
-                     IdHTTP.IOHandler:=LHandler;
-                     URI := TIdURI.Create(Url);
-                     URI.Username := User;
-                     URI.Password := Pass;
-
-                     FileStream := TFileStream.Create(AParsedDocName, fmOpenReadWrite);
-                     try
-                        IdHTTP.Get(URI.GetFullURI([ofAuthInfo]), FileStream);
-                        numBytes := IdHTTP.response.contentLength;
-                     finally
-                        FileStream.Free;
-                     end;
-                  finally
-//                     MoveFile(PChar(tempFile), PChar(AParsedDocName));
-                     LHandler.Free;
-                     Result := True;
-                     IdHTTP.Disconnect;
-{                     try
-                        Tfile.Move(AParsedDocName, IndexedFullTargetFileName);
-                     except
-                        //
-                     end;  }
+                  FileHandle := NativeInt(FileCreate(AParsedDocName));
+                  if (FileHandle = -1) then
+                  begin
+                     bFileError := True;
                   end;
+                  FileClose(FileHandle);
+
+                  if bFileError = False then
+                  begin
+                     IdHTTP.AllowCookies := True;
+                     IdHTTP.HandleRedirects := True;
+
+                     IdHTTP.Request.Username := User;
+                     IdHTTP.Request.Password := Pass;
+                     IdHTTP.Request.BasicAuthentication := False;
+                     IdHTTP.HTTPOptions := [hoInProcessAuth];
+
+                     IdHTTP.Request.ContentType := 'application/x-www-form-urlencoded';
+                     IdHTTP.Request.Connection := 'keep-alive';
+                     // Download file
+                     try
+                        IdHTTP.IOHandler:=LHandler;
+                        URI := TIdURI.Create(Url);
+                        URI.Username := User;
+                        URI.Password := Pass;
+
+                        FileStream := TFileStream.Create(AParsedDocName, fmOpenReadWrite);
+                        try
+                           IdHTTP.Get(URI.GetFullURI([ofAuthInfo]), FileStream);
+                           numBytes := IdHTTP.response.contentLength;
+                        finally
+                           FileStream.Free;
+                        end;
+                     finally
+//                        MoveFile(PChar(tempFile), PChar(AParsedDocName));
+                        LHandler.Free;
+                        Result := True;
+                        IdHTTP.Disconnect;
+{                        try
+                           Tfile.Move(AParsedDocName, IndexedFullTargetFileName);
+                        except
+                           //
+                        end;  }
+                     end;
+                  end;
+               end
+               else
+               begin
+                  WriteLog('Failed to create directory ' + ExtractFileDir(AParsedDocName));
+                  Result := False;
                end;
-            end;
+            end
+{            else
+            begin
+               WriteLog('Document already exists ' + AParsedDocName);
+               Result := False;
+            end;        }
          except
             on E: Exception do
 //               ShowMessage(E.Message);
@@ -1035,39 +1064,6 @@ begin
   qryLookup.Free;
 end;
 
-function TInsightiTrackWatcher.GetSeqnum(sField: string): integer;
-var
-  iTmp: integer;
-begin
-{ GetSeqnum grabs the Seqnum specified by sField and returns it.
-}
-  try
-    with qrySeqNums do
-    begin
-      Close;
-
-      SQL.Text := 'SELECT ' + sField + ' FROM SEQNUMS FOR UPDATE';
-      Open;
-      iTmp := -1;
-      if not IsEmpty then
-      begin
-        iTmp := FieldByName(sField).AsInteger + 1;
-        SQL.Text := 'UPDATE SEQNUMS SET ' + sField + ' = ' + IntToStr(iTmp);
-        ExecSQL;
-        Close;
-      end;
-      Close;
-      Result := iTmp;
-    end;
-  except
-    // Didn't work for some reason
-    On E: Exception do
-    begin
-//      MsgErr('Could not get next sequential number: ' + sField + #13#13 + E.Message);
-//      raise;
-    end;
-  end;
-end;
 
 function TInsightiTrackWatcher.GetSequenceNumber(sSequence: string): Integer;
 begin
@@ -1297,65 +1293,65 @@ begin
       if (cAmount <> 0) then
       begin
 
-        try
-          with qryTransItemInsert do
-          begin
-            ParamsNullify(Params);
-
-            ParamByName('CREATED').AsDateTime := dtDate;
-            ParamByName('ACCT').AsString := Entity;
-            ParamByName('AMOUNT').AsFloat := cAmount;
-            ParamByName('TAX').AsFloat := cTax;
-            ParamByName('REFNO').AsString := sRefno;
-            ParamByName('DESCR').AsString := sDesc;
-            ParamByName('CHART').AsString := sFullLedger;
-            ParamByName('OWNER_CODE').AsString := sOwnerCode;
-            ParamByName('NOWNER').AsInteger := iOwner;
-            ParamByName('TAXCODE').AsString := sTaxCode;
-            ParamByName('PARENT_CHART').AsString := sParentChart;
-            if nTrans > 0 then
-               ParamByName('NTRANS').AsInteger := nTrans;
-
-            ParamByName('WHO').AsString := UserID;
-
-            if (sOwnerCode = 'CHEQUE') then
-              ParamByName('NCHEQUE').AsInteger := iOwner;
-
-            if (iInvoice <> -1) then
+         try
+            with qryTransItemInsert do
             begin
-             ParamByName('NINVOICE').AsInteger := iInvoice;
-             ParamByName('CREDITORCODE').AsString := CreditorCode;
-            end;
+               ParamsNullify(Params);
 
-            if (sOwnerCode = 'RECEIPT') then
-              ParamByName('NRECEIPT').AsInteger := iOwner;
+               ParamByName('CREATED').AsDateTime := dtDate;
+               ParamByName('ACCT').AsString := Entity;
+               ParamByName('AMOUNT').AsFloat := cAmount;
+               ParamByName('TAX').AsFloat := cTax;
+               ParamByName('REFNO').AsString := sRefno;
+               ParamByName('DESCR').AsString := sDesc;
+               ParamByName('CHART').AsString := sFullLedger;
+               ParamByName('OWNER_CODE').AsString := sOwnerCode;
+               ParamByName('NOWNER').AsInteger := iOwner;
+               ParamByName('TAXCODE').AsString := sTaxCode;
+               ParamByName('PARENT_CHART').AsString := sParentChart;
+               if nTrans > 0 then
+                  ParamByName('NTRANS').AsInteger := nTrans;
 
-            if (sOwnerCode = 'JOURNAL') then
-              ParamByName('NJOURNAL').AsInteger := iOwner;
+               ParamByName('WHO').AsString := UserID;
 
-            if (nAlloc <> 0) then
-              ParamByName('NALLOC').AsInteger := nAlloc;
+               if (sOwnerCode = 'CHEQUE') then
+                  ParamByName('NCHEQUE').AsInteger := iOwner;
 
-            if (nMatter <> 0) then
-              ParamByName('NMATTER').AsInteger := nMatter;
+               if (iInvoice <> -1) then
+               begin
+                  ParamByName('NINVOICE').AsInteger := iInvoice;
+                  ParamByName('CREDITORCODE').AsString := CreditorCode;
+               end;
 
-            if (UseRvDate)then
-              ParamByName('RVDATE').AsDate := Now;
+               if (sOwnerCode = 'RECEIPT') then
+                  ParamByName('NRECEIPT').AsInteger := iOwner;
 
-            ParamByName('VERSION').AsString := C_VERSION;
+               if (sOwnerCode = 'JOURNAL') then
+                  ParamByName('NJOURNAL').AsInteger := iOwner;
 
-            ParamByName('BAS_TAX').AsFloat := cTax;
-            ExecSQL;
-            Close;
+               if (nAlloc <> 0) then
+                  ParamByName('NALLOC').AsInteger := nAlloc;
+
+               if (nMatter <> 0) then
+                  ParamByName('NMATTER').AsInteger := nMatter;
+
+               if (UseRvDate)then
+                  ParamByName('RVDATE').AsDate := Now;
+
+               ParamByName('VERSION').AsString := C_VERSION;
+
+               ParamByName('BAS_TAX').AsFloat := cTax;
+               ExecSQL;
+               Close;
 
 //            cLedgerTotal := cLedgerTotal + cAmount;
-          end;
-        except
-          on E : Exception do
-          begin
-            Raise;
-          end;
-        end;
+            end;
+         except
+            on E : Exception do
+            begin
+               Raise;
+            end;
+         end;
       end;
 end;
 
@@ -1393,7 +1389,7 @@ var
   iCtr: integer;
 begin
   for iCtr := 0 to parClear.Count - 1 do
-    parClear.Items[iCtr].Value := null;
+    parClear.Items[iCtr].Clear;
 end;
 
 function TInsightiTrackWatcher.getGlComponents : TglComponentSetup;
@@ -1618,7 +1614,7 @@ begin
                bMoveSuccess := True
             else
             begin
-               if (TOSVersion.Name = 'Windows 8') or (TOSVersion.Name = 'Windows Server 2012') or (TOSVersion.Name = 'Windows 10') then
+               if MatchText(TOSVersion.Name, CheckOSVersion) then
                begin
                   bMoveSuccess := CopyFileIFileOperationForceDirectories(FileName, GetUniqueXMLFileName(NewDocName), bCopyMove);
                end
@@ -1894,9 +1890,9 @@ var
    FileHandle: integer;
    FileSize: DWord;
 begin
-      if (bLogIt) then
-      begin
-        try
+    if (bLogIt) then
+    begin
+       try
           if LogFile = '' then
              LogFile := fServicePath + 'INFOWATCH.LOG';
           if (LogFile <> '') then
@@ -1912,7 +1908,6 @@ begin
                    Append(FTextFile)
                 else
                    Rewrite(FTextFile);
-
                 try
                    value := DateTimeToStr(Now()) + ' - ' + AMessage;
                    WriteLn(FTextFile, value);
@@ -1939,9 +1934,9 @@ begin
                 end;
              end;
           end;
-        except
+       except
          //
-        end;
+       end;
     end;
 end;
 

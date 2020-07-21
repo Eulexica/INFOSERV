@@ -1,7 +1,5 @@
 object InsightiTrackWatcher: TInsightiTrackWatcher
   OldCreateOrder = False
-  OnCreate = ServiceCreate
-  OnDestroy = ServiceDestroy
   AllowPause = False
   DisplayName = 'InsightiTrackWatcher'
   ServiceStartName = 'NT AUTHORITY\NetworkService'
@@ -10,6 +8,67 @@ object InsightiTrackWatcher: TInsightiTrackWatcher
   Height = 300
   Width = 400
   object qryMatterAttachment: TUniQuery
+    UpdatingTable = 'DOC'
+    KeyFields = 'docid'
+    SQLInsert.Strings = (
+      'INSERT INTO DOC'
+      
+        '  (DOC_NAME, SEARCH, DOC_CODE, JURIS, D_CREATE, AUTH1, D_MODIF, ' +
+        'AUTH2, PATH, DESCR, FILEID, DOCID, NPRECCATEGORY, NMATTER, DOCUM' +
+        'ENT, IMAGEINDEX, FILE_EXTENSION, EMAIL_SENT_TO, KEYWORDS, PRECED' +
+        'ENT_DETAILS, NPRECCLASSIFICATION, DISPLAY_PATH, EXTERNAL_ACCESS,' +
+        ' EMAIL_FROM, NFEE)'
+      'VALUES'
+      
+        '  (:DOC_NAME, :SEARCH, :DOC_CODE, :JURIS, :D_CREATE, :AUTH1, :D_' +
+        'MODIF, :AUTH2, :PATH, :DESCR, :FILEID, :DOCID, :NPRECCATEGORY, :' +
+        'NMATTER, :DOCUMENT, :IMAGEINDEX, :FILE_EXTENSION, :EMAIL_SENT_TO' +
+        ', :KEYWORDS, :PRECEDENT_DETAILS, :NPRECCLASSIFICATION, :DISPLAY_' +
+        'PATH, :EXTERNAL_ACCESS, :EMAIL_FROM, :NFEE)')
+    SQLDelete.Strings = (
+      'DELETE FROM DOC'
+      'WHERE'
+      '  DOCID = :Old_DOCID')
+    SQLUpdate.Strings = (
+      'UPDATE DOC'
+      'SET'
+      
+        '  DOC_NAME = :DOC_NAME, SEARCH = :SEARCH, DOC_CODE = :DOC_CODE, ' +
+        'JURIS = :JURIS, D_CREATE = :D_CREATE, AUTH1 = :AUTH1, D_MODIF = ' +
+        ':D_MODIF, AUTH2 = :AUTH2, PATH = :PATH, DESCR = :DESCR, FILEID =' +
+        ' :FILEID, DOCID = :DOCID, NPRECCATEGORY = :NPRECCATEGORY, NMATTE' +
+        'R = :NMATTER, DOCUMENT = :DOCUMENT, IMAGEINDEX = :IMAGEINDEX, FI' +
+        'LE_EXTENSION = :FILE_EXTENSION, EMAIL_SENT_TO = :EMAIL_SENT_TO, ' +
+        'KEYWORDS = :KEYWORDS, PRECEDENT_DETAILS = :PRECEDENT_DETAILS, NP' +
+        'RECCLASSIFICATION = :NPRECCLASSIFICATION, DISPLAY_PATH = :DISPLA' +
+        'Y_PATH, EXTERNAL_ACCESS = :EXTERNAL_ACCESS, EMAIL_FROM = :EMAIL_' +
+        'FROM, NFEE = :NFEE'
+      'WHERE'
+      '  DOCID = :Old_DOCID')
+    SQLLock.Strings = (
+      
+        'SELECT DOC_NAME, SEARCH, DOC_CODE, JURIS, D_CREATE, AUTH1, D_MOD' +
+        'IF, AUTH2, PATH, DESCR, FILEID, DOCID, NPRECCATEGORY, NMATTER, D' +
+        'OCUMENT, IMAGEINDEX, FILE_EXTENSION, EMAIL_SENT_TO, KEYWORDS, PR' +
+        'ECEDENT_DETAILS, NPRECCLASSIFICATION, DISPLAY_PATH, EXTERNAL_ACC' +
+        'ESS, EMAIL_FROM, NFEE FROM DOC'
+      'WHERE'
+      '  DOCID = :Old_DOCID'
+      'FOR UPDATE NOWAIT')
+    SQLRefresh.Strings = (
+      
+        'SELECT DOC_NAME, SEARCH, DOC_CODE, JURIS, D_CREATE, AUTH1, D_MOD' +
+        'IF, AUTH2, PATH, DESCR, FILEID, DOCID, NPRECCATEGORY, NMATTER, D' +
+        'OCUMENT, IMAGEINDEX, FILE_EXTENSION, EMAIL_SENT_TO, KEYWORDS, PR' +
+        'ECEDENT_DETAILS, NPRECCLASSIFICATION, DISPLAY_PATH, EXTERNAL_ACC' +
+        'ESS, EMAIL_FROM, NFEE FROM DOC'
+      'WHERE'
+      '  DOCID = :Old_DOCID')
+    SQLRecCount.Strings = (
+      'SELECT Count(*) FROM ('
+      'SELECT * FROM DOC'
+      ''
+      ')')
     Connection = uniInsight
     SQL.Strings = (
       'SELECT'
@@ -55,14 +114,233 @@ object InsightiTrackWatcher: TInsightiTrackWatcher
       end>
   end
   object qrySearches: TUniQuery
-    UpdatingTable = 'SEARCHES'
-    KeyFields = 'search_id'
+    UpdatingTable = 'AXIOM.SEARCHES'
+    KeyFields = 'SEARCH_ID'
+    SQLInsert.Strings = (
+      'INSERT INTO AXIOM.SEARCHES'
+      
+        '  (SEARCH_ID, AVAILABLEONLINE, BILLINGTYPENAME, CLIENTREFERENCE1' +
+        ', COMMENTS, DATEORDERED, DATECOMPLETED, DESCRIPTION, ORDERID, PA' +
+        'RENTORDERID, ORDEREDBY, REFERENCE, RETAILERREFERENCE_OLD, RETAIL' +
+        'ERFEE, RETAILERFEEGST, RETAILERFEETOTAL, SUPPLIERFEE, SUPPLIERFE' +
+        'EGST, SUPPLIERFEETOTAL, TOTALFEE, TOTALFEEGST, TOTALFEETOTAL, SE' +
+        'RVICENAME, STATUS, STATUSMESSAGE, DOWNLOADURL, ONLINEURL, ISBILL' +
+        'ABLE, FILEHASH, EMAIL, CLIENTID, SEQUENCENUMBER, CLIENTREFERENCE' +
+        ', RETAILERREFERENCE, FILE_NAME)'
+      'VALUES'
+      
+        '  (:SEARCH_ID, :AVAILABLEONLINE, :BILLINGTYPENAME, :CLIENTREFERE' +
+        'NCE1, :COMMENTS, :DATEORDERED, :DATECOMPLETED, :DESCRIPTION, :OR' +
+        'DERID, :PARENTORDERID, :ORDEREDBY, :REFERENCE, :RETAILERREFERENC' +
+        'E_OLD, :RETAILERFEE, :RETAILERFEEGST, :RETAILERFEETOTAL, :SUPPLI' +
+        'ERFEE, :SUPPLIERFEEGST, :SUPPLIERFEETOTAL, :TOTALFEE, :TOTALFEEG' +
+        'ST, :TOTALFEETOTAL, :SERVICENAME, :STATUS, :STATUSMESSAGE, :DOWN' +
+        'LOADURL, :ONLINEURL, :ISBILLABLE, :FILEHASH, :EMAIL, :CLIENTID, ' +
+        ':SEQUENCENUMBER, :CLIENTREFERENCE, :RETAILERREFERENCE, :FILE_NAM' +
+        'E)')
+    SQLDelete.Strings = (
+      'DELETE FROM AXIOM.SEARCHES'
+      'WHERE'
+      '  SEARCH_ID = :Old_SEARCH_ID')
+    SQLUpdate.Strings = (
+      'UPDATE AXIOM.SEARCHES'
+      'SET'
+      
+        '  SEARCH_ID = :SEARCH_ID, AVAILABLEONLINE = :AVAILABLEONLINE, BI' +
+        'LLINGTYPENAME = :BILLINGTYPENAME, CLIENTREFERENCE1 = :CLIENTREFE' +
+        'RENCE1, COMMENTS = :COMMENTS, DATEORDERED = :DATEORDERED, DATECO' +
+        'MPLETED = :DATECOMPLETED, DESCRIPTION = :DESCRIPTION, ORDERID = ' +
+        ':ORDERID, PARENTORDERID = :PARENTORDERID, ORDEREDBY = :ORDEREDBY' +
+        ', REFERENCE = :REFERENCE, RETAILERREFERENCE_OLD = :RETAILERREFER' +
+        'ENCE_OLD, RETAILERFEE = :RETAILERFEE, RETAILERFEEGST = :RETAILER' +
+        'FEEGST, RETAILERFEETOTAL = :RETAILERFEETOTAL, SUPPLIERFEE = :SUP' +
+        'PLIERFEE, SUPPLIERFEEGST = :SUPPLIERFEEGST, SUPPLIERFEETOTAL = :' +
+        'SUPPLIERFEETOTAL, TOTALFEE = :TOTALFEE, TOTALFEEGST = :TOTALFEEG' +
+        'ST, TOTALFEETOTAL = :TOTALFEETOTAL, SERVICENAME = :SERVICENAME, ' +
+        'STATUS = :STATUS, STATUSMESSAGE = :STATUSMESSAGE, DOWNLOADURL = ' +
+        ':DOWNLOADURL, ONLINEURL = :ONLINEURL, ISBILLABLE = :ISBILLABLE, ' +
+        'FILEHASH = :FILEHASH, EMAIL = :EMAIL, CLIENTID = :CLIENTID, SEQU' +
+        'ENCENUMBER = :SEQUENCENUMBER, CLIENTREFERENCE = :CLIENTREFERENCE' +
+        ', RETAILERREFERENCE = :RETAILERREFERENCE, FILE_NAME = :FILE_NAME'
+      'WHERE'
+      '  SEARCH_ID = :Old_SEARCH_ID')
+    SQLLock.Strings = (
+      
+        'SELECT SEARCH_ID, AVAILABLEONLINE, BILLINGTYPENAME, CLIENTREFERE' +
+        'NCE1, COMMENTS, DATEORDERED, DATECOMPLETED, DESCRIPTION, ORDERID' +
+        ', PARENTORDERID, ORDEREDBY, REFERENCE, RETAILERREFERENCE_OLD, RE' +
+        'TAILERFEE, RETAILERFEEGST, RETAILERFEETOTAL, SUPPLIERFEE, SUPPLI' +
+        'ERFEEGST, SUPPLIERFEETOTAL, TOTALFEE, TOTALFEEGST, TOTALFEETOTAL' +
+        ', SERVICENAME, STATUS, STATUSMESSAGE, DOWNLOADURL, ONLINEURL, IS' +
+        'BILLABLE, FILEHASH, EMAIL, CLIENTID, SEQUENCENUMBER, CLIENTREFER' +
+        'ENCE, RETAILERREFERENCE, FILE_NAME FROM AXIOM.SEARCHES'
+      'WHERE'
+      '  SEARCH_ID = :Old_SEARCH_ID'
+      'FOR UPDATE NOWAIT')
+    SQLRefresh.Strings = (
+      
+        'SELECT SEARCH_ID, AVAILABLEONLINE, BILLINGTYPENAME, CLIENTREFERE' +
+        'NCE1, COMMENTS, DATEORDERED, DATECOMPLETED, DESCRIPTION, ORDERID' +
+        ', PARENTORDERID, ORDEREDBY, REFERENCE, RETAILERREFERENCE_OLD, RE' +
+        'TAILERFEE, RETAILERFEEGST, RETAILERFEETOTAL, SUPPLIERFEE, SUPPLI' +
+        'ERFEEGST, SUPPLIERFEETOTAL, TOTALFEE, TOTALFEEGST, TOTALFEETOTAL' +
+        ', SERVICENAME, STATUS, STATUSMESSAGE, DOWNLOADURL, ONLINEURL, IS' +
+        'BILLABLE, FILEHASH, EMAIL, CLIENTID, SEQUENCENUMBER, CLIENTREFER' +
+        'ENCE, RETAILERREFERENCE, FILE_NAME FROM AXIOM.SEARCHES'
+      'WHERE'
+      '  SEARCH_ID = :Old_SEARCH_ID')
+    SQLRecCount.Strings = (
+      'SELECT Count(*) FROM ('
+      'SELECT * FROM AXIOM.SEARCHES'
+      ''
+      ')')
     Connection = uniInsight
     SQL.Strings = (
-      'select searches.*, searches.rowid'
-      'from searches')
-    Left = 112
-    Top = 21
+      'SELECT '
+      '   AVAILABLEONLINE, BILLINGTYPENAME, CLIENTID, '
+      '   CLIENTREFERENCE, CLIENTREFERENCE1, COMMENTS, '
+      '   DATECOMPLETED, DATEORDERED, DESCRIPTION, '
+      '   DOWNLOADURL, EMAIL, FILE_NAME, '
+      '   FILEHASH, ISBILLABLE, ONLINEURL, '
+      '   ORDEREDBY, ORDERID, PARENTORDERID, '
+      '   REFERENCE, RETAILERFEE, RETAILERFEEGST, '
+      '   RETAILERFEETOTAL, RETAILERREFERENCE, RETAILERREFERENCE_OLD, '
+      '   SEARCH_ID, SEQUENCENUMBER, SERVICENAME, '
+      '   STATUS, STATUSMESSAGE, SUPPLIERFEE, '
+      '   SUPPLIERFEEGST, SUPPLIERFEETOTAL, TOTALFEE, '
+      '   TOTALFEEGST, TOTALFEETOTAL, rowid'
+      'FROM AXIOM.SEARCHES')
+    CachedUpdates = True
+    SpecificOptions.Strings = (
+      'Oracle.KeySequence=sqnc_searches')
+    Left = 104
+    Top = 53
+    object qrySearchesAVAILABLEONLINE: TStringField
+      FieldName = 'AVAILABLEONLINE'
+      Size = 5
+    end
+    object qrySearchesBILLINGTYPENAME: TStringField
+      FieldName = 'BILLINGTYPENAME'
+      Size = 100
+    end
+    object qrySearchesCLIENTID: TStringField
+      FieldName = 'CLIENTID'
+      Size = 30
+    end
+    object qrySearchesCLIENTREFERENCE: TStringField
+      FieldName = 'CLIENTREFERENCE'
+    end
+    object qrySearchesCLIENTREFERENCE1: TFloatField
+      FieldName = 'CLIENTREFERENCE1'
+    end
+    object qrySearchesCOMMENTS: TStringField
+      FieldName = 'COMMENTS'
+      Size = 4000
+    end
+    object qrySearchesDATECOMPLETED: TDateTimeField
+      FieldName = 'DATECOMPLETED'
+    end
+    object qrySearchesDATEORDERED: TDateTimeField
+      FieldName = 'DATEORDERED'
+    end
+    object qrySearchesDESCRIPTION: TStringField
+      FieldName = 'DESCRIPTION'
+      Size = 1000
+    end
+    object qrySearchesDOWNLOADURL: TStringField
+      FieldName = 'DOWNLOADURL'
+      Size = 400
+    end
+    object qrySearchesEMAIL: TStringField
+      FieldName = 'EMAIL'
+      Size = 250
+    end
+    object qrySearchesFILE_NAME: TStringField
+      FieldName = 'FILE_NAME'
+      Size = 250
+    end
+    object qrySearchesFILEHASH: TStringField
+      FieldName = 'FILEHASH'
+      Size = 50
+    end
+    object qrySearchesISBILLABLE: TStringField
+      FieldName = 'ISBILLABLE'
+      Size = 5
+    end
+    object qrySearchesONLINEURL: TStringField
+      FieldName = 'ONLINEURL'
+      Size = 400
+    end
+    object qrySearchesORDEREDBY: TStringField
+      FieldName = 'ORDEREDBY'
+      Size = 100
+    end
+    object qrySearchesORDERID: TFloatField
+      FieldName = 'ORDERID'
+    end
+    object qrySearchesPARENTORDERID: TFloatField
+      FieldName = 'PARENTORDERID'
+    end
+    object qrySearchesREFERENCE: TStringField
+      FieldName = 'REFERENCE'
+      Size = 150
+    end
+    object qrySearchesRETAILERFEE: TFloatField
+      FieldName = 'RETAILERFEE'
+    end
+    object qrySearchesRETAILERFEEGST: TFloatField
+      FieldName = 'RETAILERFEEGST'
+    end
+    object qrySearchesRETAILERFEETOTAL: TFloatField
+      FieldName = 'RETAILERFEETOTAL'
+    end
+    object qrySearchesRETAILERREFERENCE: TStringField
+      FieldName = 'RETAILERREFERENCE'
+    end
+    object qrySearchesRETAILERREFERENCE_OLD: TFloatField
+      FieldName = 'RETAILERREFERENCE_OLD'
+    end
+    object qrySearchesSEARCH_ID: TFloatField
+      FieldName = 'SEARCH_ID'
+    end
+    object qrySearchesSEQUENCENUMBER: TFloatField
+      FieldName = 'SEQUENCENUMBER'
+    end
+    object qrySearchesSERVICENAME: TStringField
+      FieldName = 'SERVICENAME'
+      Size = 100
+    end
+    object qrySearchesSTATUS: TStringField
+      FieldName = 'STATUS'
+      Size = 50
+    end
+    object qrySearchesSTATUSMESSAGE: TStringField
+      FieldName = 'STATUSMESSAGE'
+      Size = 1000
+    end
+    object qrySearchesSUPPLIERFEE: TFloatField
+      FieldName = 'SUPPLIERFEE'
+    end
+    object qrySearchesSUPPLIERFEEGST: TFloatField
+      FieldName = 'SUPPLIERFEEGST'
+    end
+    object qrySearchesSUPPLIERFEETOTAL: TFloatField
+      FieldName = 'SUPPLIERFEETOTAL'
+    end
+    object qrySearchesTOTALFEE: TFloatField
+      FieldName = 'TOTALFEE'
+    end
+    object qrySearchesTOTALFEEGST: TFloatField
+      FieldName = 'TOTALFEEGST'
+    end
+    object qrySearchesTOTALFEETOTAL: TFloatField
+      FieldName = 'TOTALFEETOTAL'
+    end
+    object qrySearchesROWID: TStringField
+      FieldName = 'ROWID'
+      ReadOnly = True
+      Size = 18
+    end
   end
   object qryTmp: TUniQuery
     Connection = uniInsight
@@ -82,8 +360,8 @@ object InsightiTrackWatcher: TInsightiTrackWatcher
     Connection = uniInsight
     SQL.Strings = (
       'select DOC_DOCID.nextval as nextdoc from dual')
-    Left = 91
-    Top = 69
+    Left = 75
+    Top = 101
   end
   object uniInsight: TUniConnection
     ProviderName = 'Oracle'
@@ -96,32 +374,23 @@ object InsightiTrackWatcher: TInsightiTrackWatcher
     PoolingOptions.ConnectionLifetime = 10000000
     PoolingOptions.Validate = True
     Username = 'axiom'
-    Server = '192.168.0.22:1521:marketing'
+    Server = 'dev-oracle:1521:sn=jcl'
     LoginPrompt = False
-    Left = 278
+    Left = 310
     Top = 15
     EncryptedPassword = '9EFF87FF96FF90FF92FF'
   end
   object procTemp: TUniStoredProc
     Connection = uniInsight
     Left = 90
-    Top = 127
-  end
-  object qrySeqnums: TUniQuery
-    Connection = uniInsight
-    SQL.Strings = (
-      'SELECT S.*, S.ROWID FROM SEQNUMS S')
-    CachedUpdates = True
-    AutoCalcFields = False
-    Left = 157
-    Top = 77
+    Top = 159
   end
   object qryCharts: TUniQuery
     Connection = uniInsight
     SQL.Strings = (
       'SELECT * FROM CHART WHERE BANK = :P_Bank AND CODE = :P_Code')
     Left = 221
-    Top = 21
+    Top = 29
     ParamData = <
       item
         DataType = ftUnknown
@@ -141,8 +410,8 @@ object InsightiTrackWatcher: TInsightiTrackWatcher
       'from gl_expense_allocations gl '
       'where master_code = :code'
       'and master_bank = :bank')
-    Left = 171
-    Top = 133
+    Left = 187
+    Top = 109
     ParamData = <
       item
         DataType = ftUnknown
@@ -166,9 +435,7 @@ object InsightiTrackWatcher: TInsightiTrackWatcher
     Connection = uniInsight
     SQL.Strings = (
       'INSERT INTO transitem'
-      
-        '            ( /*NACCOUNT, */created, acct, amount, tax, refno, d' +
-        'escr, chart,'
+      '            ( created, acct, amount, tax, refno, descr, chart,'
       
         '             owner_code, nowner, ncheque, nreceipt, ninvoice, nj' +
         'ournal,'
@@ -178,10 +445,7 @@ object InsightiTrackWatcher: TInsightiTrackWatcher
       '             rvdate, VERSION, ntrans, bas_tax'
       '            )'
       
-        '     VALUES (                                                   ' +
-        '  --:NACCOUNT,'
-      
-        '             :created, :acct, :amount, :tax, :refno, :descr, :ch' +
+        '     VALUES (:created, :acct, :amount, :tax, :refno, :descr, :ch' +
         'art,'
       
         '             :owner_code, :nowner, :ncheque, :nreceipt, :ninvoic' +
@@ -192,127 +456,127 @@ object InsightiTrackWatcher: TInsightiTrackWatcher
       '             :rvdate, :VERSION, :ntrans, :bas_tax'
       '            )')
     Left = 96
-    Top = 181
+    Top = 229
     ParamData = <
       item
-        DataType = ftUnknown
+        DataType = ftDate
         Name = 'CREATED'
         Value = nil
       end
       item
-        DataType = ftUnknown
+        DataType = ftString
         Name = 'ACCT'
         Value = nil
       end
       item
-        DataType = ftUnknown
+        DataType = ftFloat
         Name = 'AMOUNT'
         Value = nil
       end
       item
-        DataType = ftUnknown
+        DataType = ftFloat
         Name = 'TAX'
         Value = nil
       end
       item
-        DataType = ftUnknown
+        DataType = ftString
         Name = 'REFNO'
         Value = nil
       end
       item
-        DataType = ftUnknown
+        DataType = ftString
         Name = 'DESCR'
         Value = nil
       end
       item
-        DataType = ftUnknown
+        DataType = ftInteger
         Name = 'CHART'
         Value = nil
       end
       item
-        DataType = ftUnknown
+        DataType = ftString
         Name = 'OWNER_CODE'
         Value = nil
       end
       item
-        DataType = ftUnknown
+        DataType = ftInteger
         Name = 'NOWNER'
         Value = nil
       end
       item
-        DataType = ftUnknown
+        DataType = ftInteger
         Name = 'NCHEQUE'
         Value = nil
       end
       item
-        DataType = ftUnknown
+        DataType = ftInteger
         Name = 'NRECEIPT'
         Value = nil
       end
       item
-        DataType = ftUnknown
+        DataType = ftInteger
         Name = 'NINVOICE'
         Value = nil
       end
       item
-        DataType = ftUnknown
+        DataType = ftInteger
         Name = 'NJOURNAL'
         Value = nil
       end
       item
-        DataType = ftUnknown
+        DataType = ftString
         Name = 'CREDITORCODE'
         Value = nil
       end
       item
-        DataType = ftUnknown
+        DataType = ftString
         Name = 'WHO'
         Value = nil
       end
       item
-        DataType = ftUnknown
+        DataType = ftString
         Name = 'TAXCODE'
         Value = nil
       end
       item
-        DataType = ftUnknown
+        DataType = ftString
         Name = 'PARENT_CHART'
         Value = nil
       end
       item
-        DataType = ftUnknown
+        DataType = ftInteger
         Name = 'NALLOC'
         Value = nil
       end
       item
-        DataType = ftUnknown
+        DataType = ftInteger
         Name = 'NMATTER'
         Value = nil
       end
       item
-        DataType = ftUnknown
+        DataType = ftDate
         Name = 'RVDATE'
         Value = nil
       end
       item
-        DataType = ftUnknown
+        DataType = ftString
         Name = 'VERSION'
         Value = nil
       end
       item
-        DataType = ftUnknown
+        DataType = ftInteger
         Name = 'NTRANS'
         Value = nil
       end
       item
-        DataType = ftUnknown
+        DataType = ftFloat
         Name = 'BAS_TAX'
         Value = nil
       end>
   end
   object OracleUniProvider1: TOracleUniProvider
-    Left = 276
-    Top = 70
+    Left = 316
+    Top = 78
   end
   object qrySearchesUpdatexx: TUniQuery
     UpdatingTable = 'SEARCHES'
@@ -357,8 +621,8 @@ object InsightiTrackWatcher: TInsightiTrackWatcher
       '       clientreference = :clientreference,'
       '       retailerreference = :retailerreference'
       ' WHERE search_id = :search_id')
-    Left = 280
-    Top = 138
+    Left = 312
+    Top = 146
     ParamData = <
       item
         DataType = ftUnknown
@@ -535,8 +799,8 @@ object InsightiTrackWatcher: TInsightiTrackWatcher
       'from searches'
       'where'
       'search_id = :search_id')
-    Left = 277
-    Top = 194
+    Left = 317
+    Top = 202
     ParamData = <
       item
         DataType = ftUnknown
@@ -576,7 +840,7 @@ object InsightiTrackWatcher: TInsightiTrackWatcher
         'CE, RETAILERREFERENCE = :RETAILERREFERENCE'
       'WHERE'
       '  SEARCH_ID = :SEARCH_ID')
-    Left = 185
+    Left = 217
     Top = 183
     ParamData = <
       item
