@@ -777,63 +777,73 @@ begin
 
             WriteLog('About to start download of ' +IndexedFullTargetFileName );
             If FileExists(AParsedDocName) = True then
-               DeleteFile(AParsedDocName)
-            else
+               DeleteFile(AParsedDocName);
+
+            if (System.SysUtils.ForceDirectories(ExtractFileDir(AParsedDocName)) = true) then
             begin
-               if (System.SysUtils.ForceDirectories(ExtractFileDir(AParsedDocName)) = true) then
+               FileHandle := NativeInt(FileCreate(AParsedDocName));
+               if (FileHandle = -1) then
                begin
-                  FileHandle := NativeInt(FileCreate(AParsedDocName));
-                  if (FileHandle = -1) then
-                  begin
-                     bFileError := True;
-                  end;
-                  FileClose(FileHandle);
+                  bFileError := True;
+               end;
+               FileClose(FileHandle);
 
-                  if bFileError = False then
-                  begin
-                     IdHTTP.AllowCookies := True;
-                     IdHTTP.HandleRedirects := True;
+               if bFileError = False then
+               begin
+                  IdHTTP.AllowCookies := True;
+                  IdHTTP.HandleRedirects := True;
 
-                     IdHTTP.Request.Username := User;
-                     IdHTTP.Request.Password := Pass;
-                     IdHTTP.Request.BasicAuthentication := False;
-                     IdHTTP.HTTPOptions := [hoInProcessAuth];
+                  IdHTTP.Request.Username := User;
+                  IdHTTP.Request.Password := Pass;
+                  IdHTTP.Request.BasicAuthentication := False;
+                  IdHTTP.HTTPOptions := [hoInProcessAuth];
 
-                     IdHTTP.Request.ContentType := 'application/x-www-form-urlencoded';
-                     IdHTTP.Request.Connection := 'keep-alive';
-                     // Download file
+                  IdHTTP.Request.ContentType := 'application/x-www-form-urlencoded';
+                  IdHTTP.Request.Connection := 'keep-alive';
+                  // Download file
+                  try
+                     IdHTTP.IOHandler:=LHandler;
+                     URI := TIdURI.Create(Url);
+                     URI.Username := User;
+                     URI.Password := Pass;
+
+                     FileStream := TFileStream.Create(AParsedDocName, fmOpenReadWrite);
                      try
-                        IdHTTP.IOHandler:=LHandler;
-                        URI := TIdURI.Create(Url);
-                        URI.Username := User;
-                        URI.Password := Pass;
-
-                        FileStream := TFileStream.Create(AParsedDocName, fmOpenReadWrite);
-                        try
-                           IdHTTP.Get(URI.GetFullURI([ofAuthInfo]), FileStream);
-                           numBytes := IdHTTP.response.contentLength;
-                        finally
-                           FileStream.Free;
-                        end;
+                        IdHTTP.Get(URI.GetFullURI([ofAuthInfo]), FileStream);
+                        numBytes := IdHTTP.response.contentLength;
                      finally
-//                        MoveFile(PChar(tempFile), PChar(AParsedDocName));
-                        LHandler.Free;
-                        Result := True;
-                        IdHTTP.Disconnect;
-{                        try
-                           Tfile.Move(AParsedDocName, IndexedFullTargetFileName);
-                        except
-                           //
-                        end;  }
+                        FileStream.Free;
                      end;
+                  finally
+//                     MoveFile(PChar(tempFile), PChar(AParsedDocName));
+                     LHandler.Free;
+                     Result := True;
+                     IdHTTP.Disconnect;
+
+                     if SystemString('USE_TEMP_FOLDER') = 'Y' then
+                     begin
+                        if MatchText(TOSVersion.Name, CheckOSVersion) then
+                        begin
+                           CopyFileIFileOperationForceDirectories(AParsedDocName, IndexedFullTargetFileName, False);
+                        end
+                        else
+                           MoveMatterDoc(AParsedDocName, IndexedFullTargetFileName, False, False);
+                     end;
+
+{                     try
+                        Tfile.Move(AParsedDocName, IndexedFullTargetFileName);
+                     except
+                        //
+                     end;  }
                   end;
-               end
-               else
-               begin
-                  WriteLog('Failed to create directory ' + ExtractFileDir(AParsedDocName));
-                  Result := False;
                end;
             end
+            else
+            begin
+               WriteLog('Failed to create directory ' + ExtractFileDir(AParsedDocName));
+               Result := False;
+            end;
+
 {            else
             begin
                WriteLog('Document already exists ' + AParsedDocName);
