@@ -10,65 +10,6 @@ object InsightiTrackWatcher: TInsightiTrackWatcher
   object qryMatterAttachment: TUniQuery
     UpdatingTable = 'DOC'
     KeyFields = 'docid'
-    SQLInsert.Strings = (
-      'INSERT INTO DOC'
-      
-        '  (DOC_NAME, SEARCH, DOC_CODE, JURIS, D_CREATE, AUTH1, D_MODIF, ' +
-        'AUTH2, PATH, DESCR, FILEID, DOCID, NPRECCATEGORY, NMATTER, DOCUM' +
-        'ENT, IMAGEINDEX, FILE_EXTENSION, EMAIL_SENT_TO, KEYWORDS, PRECED' +
-        'ENT_DETAILS, NPRECCLASSIFICATION, DISPLAY_PATH, EXTERNAL_ACCESS,' +
-        ' EMAIL_FROM, NFEE)'
-      'VALUES'
-      
-        '  (:DOC_NAME, :SEARCH, :DOC_CODE, :JURIS, :D_CREATE, :AUTH1, :D_' +
-        'MODIF, :AUTH2, :PATH, :DESCR, :FILEID, :DOCID, :NPRECCATEGORY, :' +
-        'NMATTER, :DOCUMENT, :IMAGEINDEX, :FILE_EXTENSION, :EMAIL_SENT_TO' +
-        ', :KEYWORDS, :PRECEDENT_DETAILS, :NPRECCLASSIFICATION, :DISPLAY_' +
-        'PATH, :EXTERNAL_ACCESS, :EMAIL_FROM, :NFEE)')
-    SQLDelete.Strings = (
-      'DELETE FROM DOC'
-      'WHERE'
-      '  DOCID = :Old_DOCID')
-    SQLUpdate.Strings = (
-      'UPDATE DOC'
-      'SET'
-      
-        '  DOC_NAME = :DOC_NAME, SEARCH = :SEARCH, DOC_CODE = :DOC_CODE, ' +
-        'JURIS = :JURIS, D_CREATE = :D_CREATE, AUTH1 = :AUTH1, D_MODIF = ' +
-        ':D_MODIF, AUTH2 = :AUTH2, PATH = :PATH, DESCR = :DESCR, FILEID =' +
-        ' :FILEID, DOCID = :DOCID, NPRECCATEGORY = :NPRECCATEGORY, NMATTE' +
-        'R = :NMATTER, DOCUMENT = :DOCUMENT, IMAGEINDEX = :IMAGEINDEX, FI' +
-        'LE_EXTENSION = :FILE_EXTENSION, EMAIL_SENT_TO = :EMAIL_SENT_TO, ' +
-        'KEYWORDS = :KEYWORDS, PRECEDENT_DETAILS = :PRECEDENT_DETAILS, NP' +
-        'RECCLASSIFICATION = :NPRECCLASSIFICATION, DISPLAY_PATH = :DISPLA' +
-        'Y_PATH, EXTERNAL_ACCESS = :EXTERNAL_ACCESS, EMAIL_FROM = :EMAIL_' +
-        'FROM, NFEE = :NFEE'
-      'WHERE'
-      '  DOCID = :Old_DOCID')
-    SQLLock.Strings = (
-      
-        'SELECT DOC_NAME, SEARCH, DOC_CODE, JURIS, D_CREATE, AUTH1, D_MOD' +
-        'IF, AUTH2, PATH, DESCR, FILEID, DOCID, NPRECCATEGORY, NMATTER, D' +
-        'OCUMENT, IMAGEINDEX, FILE_EXTENSION, EMAIL_SENT_TO, KEYWORDS, PR' +
-        'ECEDENT_DETAILS, NPRECCLASSIFICATION, DISPLAY_PATH, EXTERNAL_ACC' +
-        'ESS, EMAIL_FROM, NFEE FROM DOC'
-      'WHERE'
-      '  DOCID = :Old_DOCID'
-      'FOR UPDATE NOWAIT')
-    SQLRefresh.Strings = (
-      
-        'SELECT DOC_NAME, SEARCH, DOC_CODE, JURIS, D_CREATE, AUTH1, D_MOD' +
-        'IF, AUTH2, PATH, DESCR, FILEID, DOCID, NPRECCATEGORY, NMATTER, D' +
-        'OCUMENT, IMAGEINDEX, FILE_EXTENSION, EMAIL_SENT_TO, KEYWORDS, PR' +
-        'ECEDENT_DETAILS, NPRECCLASSIFICATION, DISPLAY_PATH, EXTERNAL_ACC' +
-        'ESS, EMAIL_FROM, NFEE FROM DOC'
-      'WHERE'
-      '  DOCID = :Old_DOCID')
-    SQLRecCount.Strings = (
-      'SELECT Count(*) FROM ('
-      'SELECT * FROM DOC'
-      ''
-      ')')
     Connection = uniInsight
     SQL.Strings = (
       'SELECT'
@@ -188,7 +129,7 @@ object InsightiTrackWatcher: TInsightiTrackWatcher
         'BILLABLE, FILEHASH, EMAIL, CLIENTID, SEQUENCENUMBER, CLIENTREFER' +
         'ENCE, RETAILERREFERENCE, FILE_NAME FROM AXIOM.SEARCHES'
       'WHERE'
-      '  SEARCH_ID = :Old_SEARCH_ID')
+      '  SEARCH_ID = :SEARCH_ID')
     SQLRecCount.Strings = (
       'SELECT Count(*) FROM ('
       'SELECT * FROM AXIOM.SEARCHES'
@@ -211,8 +152,7 @@ object InsightiTrackWatcher: TInsightiTrackWatcher
       '   TOTALFEEGST, TOTALFEETOTAL, rowid'
       'FROM AXIOM.SEARCHES')
     CachedUpdates = True
-    SpecificOptions.Strings = (
-      'Oracle.KeySequence=sqnc_searches')
+    OnNewRecord = qrySearchesNewRecord
     Left = 104
     Top = 53
     object qrySearchesAVAILABLEONLINE: TStringField
@@ -368,6 +308,7 @@ object InsightiTrackWatcher: TInsightiTrackWatcher
     SpecificOptions.Strings = (
       'Oracle.Direct=True'
       'Oracle.IPVersion=ivIPBoth')
+    Options.KeepDesignConnected = False
     Options.LocalFailover = True
     PoolingOptions.MaxPoolSize = 50
     PoolingOptions.MinPoolSize = 1
@@ -578,7 +519,7 @@ object InsightiTrackWatcher: TInsightiTrackWatcher
     Left = 316
     Top = 78
   end
-  object qrySearchesUpdatexx: TUniQuery
+  object qrySearchesUpdate: TUniQuery
     UpdatingTable = 'SEARCHES'
     KeyFields = 'search_id'
     Connection = uniInsight
@@ -793,6 +734,84 @@ object InsightiTrackWatcher: TInsightiTrackWatcher
   object qrySearchID: TUniQuery
     UpdatingTable = 'SEARCHES'
     KeyFields = 'search_id'
+    SQLInsert.Strings = (
+      'INSERT INTO SEARCHES'
+      
+        '  (SEARCH_ID, AVAILABLEONLINE, BILLINGTYPENAME, CLIENTREFERENCE1' +
+        ', COMMENTS, DATEORDERED, DATECOMPLETED, DESCRIPTION, ORDERID, PA' +
+        'RENTORDERID, ORDEREDBY, REFERENCE, RETAILERREFERENCE_OLD, RETAIL' +
+        'ERFEE, RETAILERFEEGST, RETAILERFEETOTAL, SUPPLIERFEE, SUPPLIERFE' +
+        'EGST, SUPPLIERFEETOTAL, TOTALFEE, TOTALFEEGST, TOTALFEETOTAL, SE' +
+        'RVICENAME, STATUS, STATUSMESSAGE, DOWNLOADURL, ONLINEURL, ISBILL' +
+        'ABLE, FILEHASH, EMAIL, CLIENTID, SEQUENCENUMBER, CLIENTREFERENCE' +
+        ', RETAILERREFERENCE, FILE_NAME)'
+      'VALUES'
+      
+        '  (:SEARCH_ID, :AVAILABLEONLINE, :BILLINGTYPENAME, :CLIENTREFERE' +
+        'NCE1, :COMMENTS, :DATEORDERED, :DATECOMPLETED, :DESCRIPTION, :OR' +
+        'DERID, :PARENTORDERID, :ORDEREDBY, :REFERENCE, :RETAILERREFERENC' +
+        'E_OLD, :RETAILERFEE, :RETAILERFEEGST, :RETAILERFEETOTAL, :SUPPLI' +
+        'ERFEE, :SUPPLIERFEEGST, :SUPPLIERFEETOTAL, :TOTALFEE, :TOTALFEEG' +
+        'ST, :TOTALFEETOTAL, :SERVICENAME, :STATUS, :STATUSMESSAGE, :DOWN' +
+        'LOADURL, :ONLINEURL, :ISBILLABLE, :FILEHASH, :EMAIL, :CLIENTID, ' +
+        ':SEQUENCENUMBER, :CLIENTREFERENCE, :RETAILERREFERENCE, :FILE_NAM' +
+        'E)')
+    SQLDelete.Strings = (
+      'DELETE FROM SEARCHES'
+      'WHERE'
+      '  SEARCH_ID = :Old_SEARCH_ID')
+    SQLUpdate.Strings = (
+      'UPDATE SEARCHES'
+      'SET'
+      
+        '  SEARCH_ID = :SEARCH_ID, AVAILABLEONLINE = :AVAILABLEONLINE, BI' +
+        'LLINGTYPENAME = :BILLINGTYPENAME, CLIENTREFERENCE1 = :CLIENTREFE' +
+        'RENCE1, COMMENTS = :COMMENTS, DATEORDERED = :DATEORDERED, DATECO' +
+        'MPLETED = :DATECOMPLETED, DESCRIPTION = :DESCRIPTION, ORDERID = ' +
+        ':ORDERID, PARENTORDERID = :PARENTORDERID, ORDEREDBY = :ORDEREDBY' +
+        ', REFERENCE = :REFERENCE, RETAILERREFERENCE_OLD = :RETAILERREFER' +
+        'ENCE_OLD, RETAILERFEE = :RETAILERFEE, RETAILERFEEGST = :RETAILER' +
+        'FEEGST, RETAILERFEETOTAL = :RETAILERFEETOTAL, SUPPLIERFEE = :SUP' +
+        'PLIERFEE, SUPPLIERFEEGST = :SUPPLIERFEEGST, SUPPLIERFEETOTAL = :' +
+        'SUPPLIERFEETOTAL, TOTALFEE = :TOTALFEE, TOTALFEEGST = :TOTALFEEG' +
+        'ST, TOTALFEETOTAL = :TOTALFEETOTAL, SERVICENAME = :SERVICENAME, ' +
+        'STATUS = :STATUS, STATUSMESSAGE = :STATUSMESSAGE, DOWNLOADURL = ' +
+        ':DOWNLOADURL, ONLINEURL = :ONLINEURL, ISBILLABLE = :ISBILLABLE, ' +
+        'FILEHASH = :FILEHASH, EMAIL = :EMAIL, CLIENTID = :CLIENTID, SEQU' +
+        'ENCENUMBER = :SEQUENCENUMBER, CLIENTREFERENCE = :CLIENTREFERENCE' +
+        ', RETAILERREFERENCE = :RETAILERREFERENCE, FILE_NAME = :FILE_NAME'
+      'WHERE'
+      '  SEARCH_ID = :Old_SEARCH_ID')
+    SQLLock.Strings = (
+      
+        'SELECT SEARCH_ID, AVAILABLEONLINE, BILLINGTYPENAME, CLIENTREFERE' +
+        'NCE1, COMMENTS, DATEORDERED, DATECOMPLETED, DESCRIPTION, ORDERID' +
+        ', PARENTORDERID, ORDEREDBY, REFERENCE, RETAILERREFERENCE_OLD, RE' +
+        'TAILERFEE, RETAILERFEEGST, RETAILERFEETOTAL, SUPPLIERFEE, SUPPLI' +
+        'ERFEEGST, SUPPLIERFEETOTAL, TOTALFEE, TOTALFEEGST, TOTALFEETOTAL' +
+        ', SERVICENAME, STATUS, STATUSMESSAGE, DOWNLOADURL, ONLINEURL, IS' +
+        'BILLABLE, FILEHASH, EMAIL, CLIENTID, SEQUENCENUMBER, CLIENTREFER' +
+        'ENCE, RETAILERREFERENCE, FILE_NAME FROM SEARCHES'
+      'WHERE'
+      '  SEARCH_ID = :Old_SEARCH_ID'
+      'FOR UPDATE NOWAIT')
+    SQLRefresh.Strings = (
+      
+        'SELECT SEARCH_ID, AVAILABLEONLINE, BILLINGTYPENAME, CLIENTREFERE' +
+        'NCE1, COMMENTS, DATEORDERED, DATECOMPLETED, DESCRIPTION, ORDERID' +
+        ', PARENTORDERID, ORDEREDBY, REFERENCE, RETAILERREFERENCE_OLD, RE' +
+        'TAILERFEE, RETAILERFEEGST, RETAILERFEETOTAL, SUPPLIERFEE, SUPPLI' +
+        'ERFEEGST, SUPPLIERFEETOTAL, TOTALFEE, TOTALFEEGST, TOTALFEETOTAL' +
+        ', SERVICENAME, STATUS, STATUSMESSAGE, DOWNLOADURL, ONLINEURL, IS' +
+        'BILLABLE, FILEHASH, EMAIL, CLIENTID, SEQUENCENUMBER, CLIENTREFER' +
+        'ENCE, RETAILERREFERENCE, FILE_NAME FROM SEARCHES'
+      'WHERE'
+      '  SEARCH_ID = :SEARCH_ID')
+    SQLRecCount.Strings = (
+      'SELECT Count(*) FROM ('
+      'SELECT * FROM SEARCHES'
+      ''
+      ')')
     Connection = uniInsight
     SQL.Strings = (
       'select searches.*, searches.rowid'
@@ -808,7 +827,7 @@ object InsightiTrackWatcher: TInsightiTrackWatcher
         Value = nil
       end>
   end
-  object qrySearchesUpdate: TUniSQL
+  object qrySearchesUpdateyy: TUniSQL
     Connection = uniInsight
     SQL.Strings = (
       'UPDATE SEARCHES'
@@ -1008,5 +1027,12 @@ object InsightiTrackWatcher: TInsightiTrackWatcher
     OnTimer = tmrScanTimer
     Left = 176
     Top = 240
+  end
+  object qryGetSearchSeq: TUniQuery
+    Connection = uniInsight
+    SQL.Strings = (
+      'select sqnc_searches.nextval as nextsearch from dual')
+    Left = 251
+    Top = 245
   end
 end

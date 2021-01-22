@@ -63,10 +63,12 @@
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
-        <VerInfo_Keys>CompanyName=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductVersion=1.0.0.0;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName);FileDescription=$(MSBuildProjectName);ProductName=$(MSBuildProjectName)</VerInfo_Keys>
+        <VerInfo_Keys>CompanyName=;FileVersion=1.1.5.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductVersion=1.0.0.0;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName);FileDescription=$(MSBuildProjectName);ProductName=$(MSBuildProjectName)</VerInfo_Keys>
         <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
         <UWP_DelphiLogo44>$(BDS)\bin\Artwork\Windows\UWP\delphi_UwpDefault_44.png</UWP_DelphiLogo44>
         <UWP_DelphiLogo150>$(BDS)\bin\Artwork\Windows\UWP\delphi_UwpDefault_150.png</UWP_DelphiLogo150>
+        <VerInfo_MinorVer>1</VerInfo_MinorVer>
+        <VerInfo_Release>5</VerInfo_Release>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64)'!=''">
         <DCC_UsePackage>dxBarRS18;dxPSCoreRS18;adxolBuildD18;dxPScxPCProdRS18;dxDockingRS18;dxThemeRS18;DBXInterBaseDriver;DataSnapServer;DataSnapCommon;DbxCommonDriver;vclimg;dbxcds;DatasnapConnectorsFreePascal;vcldb;cxExportRS18;CustomIPTransport;dsnap;IndyIPServer;IndyCore;CloudService;FmxTeeUI;dxADOServerModeRS18;dxPScxExtCommonRS18;cxEditorsRS18;cxSchedulerRS18;lmdrtrtlx;cxPageControldxBarPopupMenuRS18;dxRibbonRS18;bindcompfmx;cxBarEditItemRS18;cxPageControlRS18;dbrtl;bindcomp;inetdb;DBXOdbcDriver;adxBuildD18;xmlrtl;ibxpress;dxBarExtItemsRS18;vclactnband;bindengine;soaprtl;FMXTee;bindcompvcl;dxPsPrVwAdvRS18;vclie;dxmdsRS18;dxBarDBNavRS18;dxComnRS18;ExcelExportPackXE4;dxBarExtDBItemsRS18;DBXInformixDriver;Intraweb;dxPScxSchedulerLnkRS18;dxNavBarRS18;dsnapcon;DBXFirebirdDriver;inet;dxPSTeeChartRS18;dxPScxCommonRS18;vclx;DBXSybaseASADriver;dbexpress;IndyIPClient;dxGDIPlusRS18;dxLayoutControlRS18;DBXSqliteDriver;fmx;IndySystem;TeeDB;vclib;DataSnapClient;cxSchedulerGridRS18;DataSnapProviderClient;DBXSybaseASEDriver;dxTabbedMDIRS18;MetropolisUILiveTile;dxPSLnksRS18;vcldsnap;DBXDb2Driver;DBXOracleDriver;dxServerModeRS18;vclribbon;fmxase;vcl;DBXMSSQLDriver;IndyIPCommon;inetdbxpress;webdsnap;dxPScxGridLnkRS18;cxLibraryRS18;adortl;glComponent;lmdrtcore;rtl;DbxClientDriver;Tee;DelphiXE4_RestApi;Colateral;dxDBXServerModeRS18;DBXMySQLDriver;IndyProtocols;bindcompdbx;TeeUI;vcltouch;dxPSPrVwRibbonRS18;VclSmp;cxGridRS18;DataSnapConnectors;dxPSDBTeeChartRS18;lmdrtplugin;dxCoreRS18;fmxobj;dxPSdxLCLnkRS18;fmxdae;cxDataRS18;VirtualTreesR;lmdrtl;DataSnapIndy10ServerTransport;$(DCC_UsePackage)</DCC_UsePackage>
@@ -85,10 +87,12 @@
         <DCC_MapFile>3</DCC_MapFile>
         <Manifest_File>None</Manifest_File>
         <VerInfo_Build>36</VerInfo_Build>
-        <VerInfo_AutoIncVersion>true</VerInfo_AutoIncVersion>
-        <VerInfo_Keys>CompanyName=;FileVersion=1.0.0.36;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductVersion=1.0.0.0;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName);FileDescription=$(MSBuildProjectName);ProductName=$(MSBuildProjectName)</VerInfo_Keys>
+        <VerInfo_Keys>CompanyName=;FileVersion=1.1.5.36;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductVersion=1.0.0.0;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName);FileDescription=$(MSBuildProjectName);ProductName=$(MSBuildProjectName)</VerInfo_Keys>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Locale>1033</VerInfo_Locale>
+        <VerInfo_MinorVer>1</VerInfo_MinorVer>
+        <VerInfo_Release>5</VerInfo_Release>
+        <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
@@ -97,10 +101,9 @@
         <DCC_DebugInformation>0</DCC_DebugInformation>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
-        <VerInfo_Release>1</VerInfo_Release>
-        <VerInfo_Keys>CompanyName=Bramcote Holdings Pty Ltd;FileDescription=Insight Infotrack watcher;FileVersion=1.0.1.60;InternalName=InsightiTrack;LegalCopyright=© Bramcote Holdings Pty Ltd 2017 All Rights Reserved;LegalTrademarks=;OriginalFilename=InsightiTrack;ProductName=Insight;ProductVersion=1.0.0.0;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName)</VerInfo_Keys>
-        <VerInfo_AutoIncVersion>true</VerInfo_AutoIncVersion>
-        <VerInfo_Build>60</VerInfo_Build>
+        <VerInfo_Release>5</VerInfo_Release>
+        <VerInfo_Keys>CompanyName=Bramcote Holdings Pty Ltd;FileDescription=Insight Infotrack watcher;FileVersion=1.1.5.90;InternalName=InsightiTrack;LegalCopyright=© Bramcote Holdings Pty Ltd 2017-2020 All Rights Reserved;LegalTrademarks=;OriginalFilename=InsightiTrack;ProductName=Insight;ProductVersion=1.0.0.0;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName)</VerInfo_Keys>
+        <VerInfo_Build>90</VerInfo_Build>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
@@ -108,6 +111,7 @@
         <DCC_DebugInformation>true</DCC_DebugInformation>
         <BT_BuildType>Debug</BT_BuildType>
         <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
+        <VerInfo_MinorVer>1</VerInfo_MinorVer>
     </PropertyGroup>
     <ItemGroup>
         <DelphiCompile Include="$(MainSource)">

@@ -113,7 +113,9 @@ begin
                   qryAccount.FieldByName('OWING').AsFloat := ATotalAmt + ATax;
 
                   qryAccount.ApplyUpdates; //  Post; // Puts Account into cached buffer
+                  InsightiTrackWatcher.Writelog('Invoice posted');
 
+                  InsightiTrackWatcher.Writelog('finding chart');
                   sLedgerCode := InsightiTrackWatcher.TableStringEntity('CREDITOR', 'NCREDITOR', qryAccount.FieldByName('NCREDITOR').AsInteger, 'CHART', InsightiTrackWatcher.Entity);
                   if (InsightiTrackWatcher.ValidLedger(InsightiTrackWatcher.Entity, sLedgerCode) = False) then
                      sLedgerCode := InsightiTrackWatcher.TableString('ENTITY', 'CODE', InsightiTrackWatcher.Entity, 'CREDITORS');
@@ -121,16 +123,20 @@ begin
                   sLegalCode := InsightiTrackWatcher.TableString('ENTITY', 'CODE', InsightiTrackWatcher.Entity, 'NEW_UPCRED_DR');
                   sCreditorCode := InsightiTrackWatcher.TableString('CREDITOR', 'NCREDITOR', qryAccount.FieldByName('NCREDITOR').AsString, 'CODE');
 
+                  InsightiTrackWatcher.Writelog('found chart ' + sLegalCode);
                  // Initialise the totals for legal (matter) and ledger (trade) creditors amount
                   cMatterTotal := 0;
                   cTradeTotal  := 0;
 
                   nmatter := AMATTER;
+                  InsightiTrackWatcher.Writelog('nmatter ' + nmatter.ToString);
+                  InsightiTrackWatcher.Writelog('supplier fee ' + FloatToStr(ASupplierFee));
+
                   if (ASupplierFee <> 0) then
                   begin
                       qryAllocs.Insert;
                       dAllocSupplier := InsightiTrackWatcher.GetSequenceNumber('sqnc_nalloc');   //  GetSeqnum('NALLOC');
-                      InsightiTrackWatcher.Writelog('New NAlloc ' + IntToStr(dAllocSupplier));
+                      InsightiTrackWatcher.Writelog('New supplier NAlloc ' + IntToStr(dAllocSupplier));
                       qryAllocs.FieldByName('NALLOC').AsInteger := dAllocSupplier;
                       qryAllocs.FieldByName('NMATTER').AsInteger := nmatter;
                       qryAllocs.FieldByName('NCLIENT').AsInteger := InsightiTrackWatcher.TableInteger('MATTER', 'NMATTER', IntToStr(AMatter), 'NCLIENT');
@@ -154,17 +160,19 @@ begin
                          qryAllocs.FieldByName('TAXCODE').AsString := 'FREE'
                       else
                          qryAllocs.FieldByName('TAXCODE').AsString := TaxCode;
-                      qryAllocs.FieldByName('CREATED').AsDateTime := Now;
+                      qryAllocs.FieldByName('CREATED').AsDateTime := ACreated;  //Now;  Use date from search
     //                  qryAllocs.FieldByName('SUNDRYTYPE').AsString := qryLedger.FieldByName('SUNDRYTYPE').AsString;;   // not sure what to do about this
 
                       qryAllocs.ApplyUpdates;  // Post;  // Put it into the cached bufer
+                      InsightiTrackWatcher.Writelog('supplier Fee posted');
                   end;
 
-                  if (ARetailerFee <> 0) then
+                  InsightiTrackWatcher.Writelog('retailer fee ' + FloatToStr(ARetailerFee));
+                  if (ARetailerFee <> 0.00) then
                   begin
                      qryAllocs.Insert;
                      dAllocRetailer := InsightiTrackWatcher.GetSequenceNumber('sqnc_nalloc');
-                     InsightiTrackWatcher.Writelog('New NAlloc ' + IntToStr(dAllocRetailer));   //   GetSeqnum('NALLOC');
+                     InsightiTrackWatcher.Writelog('New retailer NAlloc ' + IntToStr(dAllocRetailer));   //   GetSeqnum('NALLOC');
                      qryAllocs.FieldByName('NALLOC').AsInteger := dAllocRetailer;
                      qryAllocs.FieldByName('NMATTER').AsInteger := nmatter;
                      qryAllocs.FieldByName('NCLIENT').AsInteger := InsightiTrackWatcher.TableInteger('MATTER', 'NMATTER', IntToStr(AMatter), 'NCLIENT');
@@ -188,18 +196,19 @@ begin
                         qryAllocs.FieldByName('TAXCODE').AsString := 'FREE'
                      else
                         qryAllocs.FieldByName('TAXCODE').AsString := TaxCode;
-                     qryAllocs.FieldByName('CREATED').AsDateTime := Now;
+                     qryAllocs.FieldByName('CREATED').AsDateTime := ACreated;  //Now;   use date from search
     //                  qryAllocs.FieldByName('SUNDRYTYPE').AsString := qryLedger.FieldByName('SUNDRYTYPE').AsString;;   // not sure what to do about this
 
                      qryAllocs.ApplyUpdates;  // Post;  // Put it into the cached bufer
+                     InsightiTrackWatcher.Writelog('Retailer fee posted');
                   end;
                   // Now make the General Ledger entry
                   cAccTotal := 0 - ATotalAmt;
                   cAccTax := 0 - ATax;
 
-                  if (ASupplierFee <> 0) then
+                  if (ASupplierFee <> 0.00) then
                   begin
-                     if (ASupplierFeeGST <> 0) then
+                     if (ASupplierFeeGST <> 0.00) then
                         TaxCode := 'GST'
                      else
                         TaxCode := 'FREE';
@@ -310,6 +319,7 @@ begin
                   on E: Exception do
                   begin
                      bPostingFailed := True;
+                     InsightiTrackWatcher.Writelog('Failed - ' + E.Message);
                      if qryAccount.UpdatesPending then
                         qryAccount.CancelUpdates;
                      if qryAllocs.UpdatesPending then

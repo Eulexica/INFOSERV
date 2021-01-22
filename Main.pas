@@ -30,10 +30,10 @@ const
   C_MACRO_DOCID         = '[DOCID]';
   C_MACRO_DOCDESCR      = '[DOCDESCR]';
 
-  C_VERSION             =  '1.1.3';
+  C_VERSION             =  '1.1.7';
 
   // OS version array used when saving documents
-  CheckOSVersion: array[0..4] of ansistring = ('Windows 8', 'Windows 10', 'Windows Server 2012', 'Windows Server 2008 R2', 'Windows Server 2016');
+  CheckOSVersion: array[0..5] of ansistring = ('Windows 8', 'Windows 10', 'Windows Server 2012', 'Windows Server 2008 R2', 'Windows Server 2016', 'Windows Server 2019');
 
 type
   TInsightiTrackWatcher = class(TService)
@@ -49,9 +49,9 @@ type
     qryEmps: TUniQuery;
     qryTransItemInsert: TUniQuery;
     OracleUniProvider1: TOracleUniProvider;
-    qrySearchesUpdatexx: TUniQuery;
+    qrySearchesUpdate: TUniQuery;
     qrySearchID: TUniQuery;
-    qrySearchesUpdate: TUniSQL;
+    qrySearchesUpdateyy: TUniSQL;
     tmrScan: TTimer;
     qrySearchesAVAILABLEONLINE: TStringField;
     qrySearchesBILLINGTYPENAME: TStringField;
@@ -89,10 +89,12 @@ type
     qrySearchesTOTALFEEGST: TFloatField;
     qrySearchesTOTALFEETOTAL: TFloatField;
     qrySearchesROWID: TStringField;
+    qryGetSearchSeq: TUniQuery;
     procedure ServiceStop(Sender: TService; var Stopped: Boolean);
     procedure ServiceStart(Sender: TService; var Started: Boolean);
     procedure qryMatterAttachmentNewRecord(DataSet: TDataSet);
     procedure tmrScanTimer(Sender: TObject);
+    procedure qrySearchesNewRecord(DataSet: TDataSet);
   private
     { Private declarations }
     FDocID: integer;
@@ -111,6 +113,7 @@ type
     iTimer: cardinal;
     bLogit: boolean;
     fServer: string;
+    FSearchID: integer;
 
 //    FFolderMon: TFolderMon;
     //FDirectoryWatch: TDirectoryWatch;
@@ -146,6 +149,7 @@ type
     procedure ProcessDirectory(sDirectory: String);
     function RecycleDelete(inpath: string): integer;
     procedure ReadSettingsIni;
+    procedure GetNewSearchID;
 
   public
     started: boolean;
@@ -153,6 +157,7 @@ type
     property Entity: string read FEntity write FEntity;
     property DocID: integer read FDocID write FDocID;
     property UserID: string read FUserID write FUserID;
+    property SearchID: integer read FSearchID write FSearchID;
 
     function TableInteger(Table, LookupField, LookupValue, ReturnField: string): integer;
     function MatterString(iFile: integer; sField: string): string;
@@ -455,16 +460,19 @@ begin
                               FieldByName('Email').AsString := AOrderNode.ChildNodes['Email'].Text;
                               FieldByName('ClientId').AsString := AOrderNode.ChildNodes['ClientId'].Text;
                               FieldByName('SequenceNumber').AsString := AOrderNode.ChildNodes['SequenceNumber'].Text;
-//                              Post;
+                              Post;
                               ApplyUpdates;
-                              WriteLog('Saved in Searches table '+ FieldByName('search_id').AsString);
+
+                              WriteLog('Saved in Searches table - ID: '+ FieldByName('search_id').AsString);
                               ASearch_ID := FieldByName('search_id').AsInteger;
                               Close;
                            end;
 
+                           Writelog('search id: '+ ASearch_ID.ToString);
                            qrySearchID.Close;
                            qrySearchID.ParamByName('search_id').AsInteger := ASearch_ID;
                            qrySearchID.Open;
+
                            if (AOrderNode.ChildNodes['IsBillable'].Text = 'true') then
                            begin
                               //AES 10/10/17 download if download url exists
@@ -483,10 +491,15 @@ begin
                                        WriteLog('Before InfoTrackLogin - AParsedDocName: ' + AParsedDocName);
                                        if (InfoTrackLogin(ADownloadURL, AParsedDocName, InfoTrackUser, InfoTrackPwd, liMatter ) = True) then
                                        begin
-                                          WriteLog('About to save document-2 '+AParsedDocName);
-                                          SaveDocument(now, LFileID, UserID, AParsedDocName+'.pdf','InfoTrack Search',
-                                                       'InfoTrack Search - ' + copy(qrySearchID.FieldByName('Description').AsString, 1,180));
-                                          WriteLog('Document-3 '+AParsedDocName+' saved.');
+                                          WriteLog('About to save document-2 '+AParsedDocName +' '+ LFileID +' '+ UserID);
+                                          try
+                                             SaveDocument(now, LFileID, 'ABC' {UserID}, AParsedDocName+'.pdf','InfoTrack Search',
+                                                          'InfoTrack Search - ' + copy(qrySearchID.FieldByName('Description').AsString, 1,180));
+                                          except
+                                             On E: Exception do
+                                                WriteLog('Failed save document ' + E.Message);
+                                          end;
+                                          WriteLog('Document- 3 '+AParsedDocName+' saved.');
                                        end
                                        else
                                           WriteLog('Document '+AParsedDocName+' not saved.');
@@ -496,12 +509,14 @@ begin
                                  end;
                               end;
 
+
                               // AES 10/10/17  only create invoice if amount > 0
+                              Writelog('TotalFeeTotal ' + qrySearchID.FieldByName('TotalFeeTotal').AsString);
                               if (qrySearchID.FieldByName('TotalFeeTotal').AsFloat <> 0) then
                               begin
                                  // create invoice
                                  try
-                                    WriteLog('Creating Transitems and allocs');
+                                    WriteLog('Creating Transitems and allocs-1');
                                     if not Assigned(dmAccountCreate) then
                                        Application.CreateForm(TdmAccountCreate, dmAccountCreate);
                                     dmAccountCreate.SaveAccount(liMatter,
@@ -624,7 +639,7 @@ begin
                               ParamByName('ClientId').AsString := AOrderNode.ChildNodes['ClientId'].Text;
                               ParamByName('SequenceNumber').AsString := AOrderNode.ChildNodes['SequenceNumber'].Text;
                               Prepare;
-                              Execute;
+                              ExecSQL;
                            end;
 
                            if (AOrderNode.ChildNodes['IsBillable'].Text = 'true') then
@@ -644,7 +659,7 @@ begin
                                     WriteLog('Before InfoTrackLogin - AParsedDocName: ' + AParsedDocName);
                                     if (InfoTrackLogin(ADownloadURL, AParsedDocName, InfoTrackUser, InfoTrackPwd, liMatter ) = True) then
                                     begin
-                                       WriteLog('About to save document-2');
+                                       WriteLog('About to save document-3');
                                        SaveDocument(now, LFileID, UserID, AParsedDocName+'.pdf','InfoTrack Search',
                                                  'InfoTrack Search - ' + copy(AOrderNode.ChildNodes['Description'].Text, 1,180));
                                     end;
@@ -664,7 +679,7 @@ begin
                                     qrySearchID.ParamByName('search_id').AsInteger := liSearch_ID;
                                     qrySearchID.Open;
 
-                                    WriteLog('Creating Transitems and allocs');
+                                    WriteLog('Creating Transitems and allocs-2');
 
                                     dmAccountCreate.SaveAccount(TableInteger('MATTER','FILEID', LFileID, 'NMATTER'),
                                                              SystemInteger('INFOTRACK_NCREDITOR'),
@@ -721,16 +736,27 @@ begin
       ReadSettingsIni;
       UniInsight.Server := fServer;
       UniInsight.Username := 'axiom';
-      UniInsight.Password := 'axiom';
-      UniInsight.Connect;
+      UniInsight.Password := 'regdeL99';
+      try
+         UniInsight.Connect;
+      except
+         UniInsight.Username := 'axiom';
+         UniInsight.Password := 'axiom';
+         try
+            UniInsight.Connect;
+         except
+            WriteLog('Error connecting to Oracle server' + FServer);
+         end;
+      end;
+
       if (SystemString('INFOTRACK_URL') <> '') then
       begin
          InfotrackFolder := IncludeTrailingPathDelimiter(SystemString('INFOTRACK_STAGING_FLDR'));
       end;
       if (UniInsight.Connected = False) then
-           WriteLog('Could not connect to Oracle server' + FServer);
+           WriteLog('Could not connect to Database server' + FServer);
    except
-      WriteLog('Could not connect to Oracle server' + FServer);
+      WriteLog('Could not connect to Database server' + FServer);
    end;
 end;
 
@@ -758,6 +784,7 @@ var
    numBytes: integer;
    URI: TIdURI;
    bFileError: boolean;
+   UNCPath: string;
 begin
    Result := False;
    bFileError := False;
@@ -774,6 +801,9 @@ begin
             NewDocPath := IncludeTrailingPathDelimiter(SystemString('INFOTRACK_DEFAULT_DIRECTORY'));
             NewDocName := NewDocPath + CleanFileName(ExtractFileName(FullTargetFileName), '-');
             AParsedDocName := ParseMacros(NewDocName, ANMatter);
+
+            if SystemString('USE_TEMP_FOLDER') = 'Y' then
+               WriteLog('About to start temp download of ' +AParsedDocName );
 
             WriteLog('About to start download of ' +IndexedFullTargetFileName );
             If FileExists(AParsedDocName) = True then
@@ -822,12 +852,21 @@ begin
 
                      if SystemString('USE_TEMP_FOLDER') = 'Y' then
                      begin
-                        if MatchText(TOSVersion.Name, CheckOSVersion) then
-                        begin
-                           CopyFileIFileOperationForceDirectories(AParsedDocName, IndexedFullTargetFileName, False);
-                        end
-                        else
-                           MoveMatterDoc(AParsedDocName, IndexedFullTargetFileName, False, False);
+                        try
+                           UNCPath := ExpandUNCFileName(IndexedFullTargetFileName);
+                           WriteLog('OS version = ' +TOSVersion.Name);
+                           WriteLog('About to copy from ' +AParsedDocName +' to '+ UNCPath);
+                           if MatchText(TOSVersion.Name, CheckOSVersion) then
+                           begin
+                              TFile.Copy(AParsedDocName, UNCPath, True);
+//                              CopyFileIFileOperationForceDirectories(AParsedDocName, UNCPath, False);
+                           end
+                           else
+                              MoveMatterDoc(AParsedDocName, UNCPath, False, False);
+                        except
+                           on E: Exception do
+                              WriteLog('Error copying file: ' + E.Message);
+                        end;
                      end;
 
 {                     try
@@ -886,12 +925,18 @@ begin
       qryMatterAttachment.FieldByName('EXTERNAL_ACCESS').AsString := 'N';
 
       try
+         qryMatterAttachment.Post;
          qryMatterAttachment.ApplyUpdates;
+         WriteLog('Document table updated');
       finally
-         qryMatterAttachment.CommitUpdates;
+//         qryMatterAttachment.CommitUpdates;
       end;
    except
-      qryMatterAttachment.CancelUpdates;
+      on E: Exception do
+      begin
+         WriteLog('Error saving doc ' + E.Message);
+         qryMatterAttachment.CancelUpdates;
+      end;
    end;
 end;
 
@@ -1050,14 +1095,14 @@ begin
     qryLookup := TUniQuery.Create(nil);
     qryLookup.Connection := uniInsight;
     with qryLookup do
-        begin
+    begin
         SQL.Text := 'SELECT ' + ReturnField + ' FROM TAXTYPE_LEDGER WHERE ' + LookupField + ' = :' + LookupField + ' and entity = :entity ';
         ParamByName(LookupField).AsString := LookupValue;
         ParamByName('ENTITY').AsString := Entity;
         open;
         Result := Fields[0].AsString;
         Close;
-        end;
+    end;
     exit;
   end;
 
@@ -1121,12 +1166,12 @@ end;
 
 procedure TInsightiTrackWatcher.tmrScanTimer(Sender: TObject);
 begin
-     if (ParamCount > 1) then
-        WriteLog('Parameter ' + Param[1]);
-     tmrScan.Interval := iTimer;
-     tmrScan.Enabled := false;
-     ProcessDirectory('');
-     tmrScan.Enabled := true;
+   if (ParamCount > 1) then
+      WriteLog('Parameter ' + Param[1]);
+   tmrScan.Interval := iTimer;
+   tmrScan.Enabled := false;
+   ProcessDirectory('');
+   tmrScan.Enabled := true;
 end;
 
 function TInsightiTrackWatcher.ValidLedger(sEntity, sLedger: string): boolean;
@@ -1302,7 +1347,6 @@ begin
       else
       if (cAmount <> 0) then
       begin
-
          try
             with qryTransItemInsert do
             begin
@@ -1870,7 +1914,7 @@ end;
 function TInsightiTrackWatcher.AppendDocID(AFileName: String): String;
 begin
   // Look for the position of the '.', put the Doc ID before it.
-  if FDocID = 0 then
+  if DocID = 0 then
     GetNewDocID;
 
   Result := TPath.GetDirectoryName(AFileName) + '\' +
@@ -1881,13 +1925,25 @@ end;
 procedure TInsightiTrackWatcher.GetNewDocID;
 begin
    qryGetDocSeq.ExecSQL;
-   FDocID := qryGetDocSeq.FieldByName('nextdoc').AsInteger
+   DocID := qryGetDocSeq.FieldByName('nextdoc').AsInteger
+end;
+
+procedure TInsightiTrackWatcher.GetNewSearchID;
+begin
+   qryGetSearchSeq.ExecSQL;
+   SearchID := qryGetSearchSeq.FieldByName('nextsearch').AsInteger
 end;
 
 procedure TInsightiTrackWatcher.qryMatterAttachmentNewRecord(DataSet: TDataSet);
 begin
    GetNewDocID;
-   DataSet.FieldByName('docid').AsInteger := FDocID;
+   DataSet.FieldByName('docid').AsInteger := DocID;
+end;
+
+procedure TInsightiTrackWatcher.qrySearchesNewRecord(DataSet: TDataSet);
+begin
+   GetNewSearchID;
+   DataSet.FieldByName('search_id').AsInteger := SearchID;
 end;
 
 procedure TInsightiTrackWatcher.WriteLog(const AMessage: string);

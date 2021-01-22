@@ -21,3 +21,9 @@ $RECYCLE.BIN/
 # =========================
 # Operating System Files
 # =========================
+*.dcu
+*.log
+*.LOG
+__history
+__recovery
+Win32/Release/insight.ini
