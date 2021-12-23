@@ -860,7 +860,7 @@ object InsightiTrackWatcher: TInsightiTrackWatcher
       'WHERE'
       '  SEARCH_ID = :SEARCH_ID')
     Left = 217
-    Top = 183
+    Top = 167
     ParamData = <
       item
         DataType = ftString

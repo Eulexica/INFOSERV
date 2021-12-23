@@ -6,11 +6,14 @@
     <Transaction>2018/11/15 09:40:17.000.768,D:\INSIGHT_XE4_SOURCE\InfoServ\Main.pas=D:\INSIGHT_XE4_SOURCE\InsightiTrackWatcher\Main.pas</Transaction>
     <Transaction>2018/11/15 09:40:26.000.910,D:\INSIGHT_XE4_SOURCE\InfoServ\AccountCreate.dfm=D:\INSIGHT_XE4_SOURCE\InsightiTrackWatcher\AccountCreate.dfm</Transaction>
     <Transaction>2018/11/15 09:40:26.000.910,D:\INSIGHT_XE4_SOURCE\InfoServ\AccountCreate.pas=D:\INSIGHT_XE4_SOURCE\InsightiTrackWatcher\AccountCreate.pas</Transaction>
+    <Transaction>2021/06/29 13:50:29.000.524,=D:\Insight_XE4_Source\INFOSERV\Unit1.pas</Transaction>
+    <Transaction>2021/06/29 13:51:09.000.788,D:\Insight_XE4_Source\INFOSERV\Unit1.pas=D:\Insight_XE4_Source\INFOSERV\ServiceManager.pas</Transaction>
   </Transactions>
 	<ProjectSortOrder AutoSort="0" SortType="0">
     <File Path="Main.pas"/>
     <File Path="Main.dfm"/>
     <File Path="AccountCreate.pas"/>
     <File Path="AccountCreate.dfm"/>
+    <File Path="ServiceManager.pas"/>
   </ProjectSortOrder>
 </BorlandProject>
