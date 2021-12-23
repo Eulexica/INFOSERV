@@ -5,7 +5,8 @@ program InfoServ;
 uses
   Vcl.SvcMgr,
   Main in 'Main.pas' {InsightiTrackWatcher: TService},
-  AccountCreate in 'AccountCreate.pas' {dmAccountCreate: TDataModule};
+  AccountCreate in 'AccountCreate.pas' {dmAccountCreate: TDataModule},
+  ServiceManager in 'ServiceManager.pas';
 
 {$R *.RES}
 

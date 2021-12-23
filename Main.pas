@@ -30,7 +30,7 @@ const
   C_MACRO_DOCID         = '[DOCID]';
   C_MACRO_DOCDESCR      = '[DOCDESCR]';
 
-  C_VERSION             =  '1.1.7';
+  C_VERSION             =  '1.1.8';
 
   // OS version array used when saving documents
   CheckOSVersion: array[0..5] of ansistring = ('Windows 8', 'Windows 10', 'Windows Server 2012', 'Windows Server 2008 R2', 'Windows Server 2016', 'Windows Server 2019');
@@ -114,6 +114,7 @@ type
     bLogit: boolean;
     fServer: string;
     FSearchID: integer;
+    FINFOTRACK_URL: boolean;
 
 //    FFolderMon: TFolderMon;
     //FDirectoryWatch: TDirectoryWatch;
@@ -192,6 +193,7 @@ type
     function DoLoadUp(const APathName: string): integer;
     function DoFileScan(const APathName: string): integer;
     procedure WriteLog(const AMessage: string);
+    property bINFOTRACK_URL: boolean read FINFOTRACK_URL write FINFOTRACK_URL;
     { Public declarations }
   end;
 
@@ -749,12 +751,13 @@ begin
          end;
       end;
 
-      if (SystemString('INFOTRACK_URL') <> '') then
+      bINFOTRACK_URL := (SystemString('INFOTRACK_URL') <> '');
+      if (bINFOTRACK_URL = True) then
       begin
          InfotrackFolder := IncludeTrailingPathDelimiter(SystemString('INFOTRACK_STAGING_FLDR'));
       end;
       if (UniInsight.Connected = False) then
-           WriteLog('Could not connect to Database server' + FServer);
+         WriteLog('Could not connect to Database server' + FServer);
    except
       WriteLog('Could not connect to Database server' + FServer);
    end;
@@ -1618,14 +1621,14 @@ begin
           CloseFile(F);
       end; }
 
-      if (SystemString('INFOTRACK_URL') <> '') then
+      if (bINFOTRACK_URL = True) then
       begin
          slFileFound := tstringlist.Create;
          slPathFound := tstringlist.Create;
-         InfotrackFolder := IncludeTrailingPathDelimiter(SystemString('INFOTRACK_STAGING_FLDR'));
+//         InfotrackFolder := IncludeTrailingPathDelimiter(SystemString('INFOTRACK_STAGING_FLDR'));
          DoFileScan(InfotrackFolder);
          DoLoadUp(InfotrackFolder);
-         Writelog('Listening on folder ' + SystemString('INFOTRACK_STAGING_FLDR'));
+         Writelog('Listening on folder ' + InfotrackFolder);
       end;
   { end
    else
@@ -1659,7 +1662,7 @@ begin
       ANewDocName := AFileName;
       bCopyMove := True;
 
-      NewDocPath := SystemString('INFOTRACK_STAGING_FLDR');
+      NewDocPath := InfotrackFolder;  //SystemString('INFOTRACK_STAGING_FLDR');
       NewDocName := IncludeTrailingPathDelimiter(NewDocPath) + 'Saved_Searches\' + ANewDocName;
 
       //if FileExists(NewDocName) = False then
