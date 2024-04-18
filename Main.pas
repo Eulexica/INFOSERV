@@ -108,7 +108,8 @@ type
     slFileFound: TStringList;
     slPathFound: TStringList;
     LogFile: string;
-    fServicePath: string;
+    fServicePath,
+    fLogPath: string;
     iFileCount: integer;
     iTimer: cardinal;
     bLogit: boolean;
@@ -1963,7 +1964,7 @@ begin
     begin
        try
           if LogFile = '' then
-             LogFile := fServicePath + 'INFOWATCH.LOG';
+             LogFile := fLogPath + 'INFOWATCH.LOG';
           if (LogFile <> '') then
           begin
              if AMessage = '' then exit;
@@ -2072,6 +2073,7 @@ begin
        bLogIt := IniFile.ReadString('SETTINGS','LOG','NO') = 'ON';
        iTimer := IniFile.ReadInteger('SETTINGS','TIMER',300) * 1000;
        fServer := IniFile.ReadString('SETTINGS','SERVER','localhost:1521:XE');
+       fLogPath := IniFile.ReadString('SETTINGS','LOG_PATH',fServicePath);
      finally
          IniFile.Free;
      end;

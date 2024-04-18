@@ -310,8 +310,8 @@ object InsightiTrackWatcher: TInsightiTrackWatcher
       'Oracle.IPVersion=ivIPBoth')
     Options.KeepDesignConnected = False
     Options.LocalFailover = True
-    PoolingOptions.MaxPoolSize = 50
     PoolingOptions.MinPoolSize = 1
+    PoolingOptions.MaxPoolSize = 50
     PoolingOptions.ConnectionLifetime = 10000000
     PoolingOptions.Validate = True
     Username = 'axiom'
